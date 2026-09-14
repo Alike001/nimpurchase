@@ -55,7 +55,9 @@ input:focus, textarea:focus { outline: 3px solid #8de1bd66; border-color: #8de1b
 details { color: #d7e8e2; } summary { cursor: pointer; font-weight: 700; } details label { margin-top: 1rem; }
 .checkout-url { overflow-wrap: anywhere; color: #bde6d4; font-size: .95rem; }
 .share-card .text-link { padding: .25rem 0; }
-.sales-section { margin-top: 3.5rem; } .sales-list { list-style: none; padding: 0; margin: 1rem 0; } .sales-list li { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #295147; padding: 1rem 0; } .sales-list small { color: #8de1bd; text-transform: capitalize; } .empty-copy { color: #bdd1c9; } .form-error { color: #ffc6bd; }
+.workspace-actions { align-items: center; display: flex; gap: 1rem; justify-content: space-between; margin: 1.5rem 0 -1rem; }.workspace-actions p { color: #95b8aa; font-size: .9rem; margin: 0; }.quiet-button { background: transparent; border: 1px solid #35645a; color: #bde6d4; font-size: .85rem; margin: 0; padding: .55rem .8rem; }
+.sales-section, .support-inbox { margin-top: 3.5rem; } .sales-list, .support-list { list-style: none; padding: 0; margin: 1rem 0; } .sales-list li { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #295147; padding: 1rem 0; } .sales-list small { color: #8de1bd; } .empty-copy { color: #bdd1c9; } .form-error { color: #ffc6bd; }
+.support-list { display: grid; gap: .75rem; }.support-list li { align-items: start; background: #11312b; border-radius: 1rem; display: flex; gap: 1rem; justify-content: space-between; padding: 1rem; }.support-message { color: #edf7f3; font-size: 1rem; margin: 0 0 .45rem; }.support-list small { color: #95b8aa; }.support-status { color: #bde6d4; flex: 0 0 8.25rem; font-size: .78rem; }.support-status select { background: #09231f; border: 1px solid #35645a; border-radius: .6rem; color: #edf7f3; font: inherit; padding: .55rem; width: 100%; }
 .merchant-name { margin-top: -1rem; }
 .purchase-receipt { display: grid; gap: .7rem; padding: 2.25rem; }
 .purchase-receipt h1 { margin-bottom: .15rem; }
