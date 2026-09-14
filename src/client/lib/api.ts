@@ -1,6 +1,7 @@
 export type PurchaseView = {
   id: string; merchantName: string; merchantWallet: string; itemSummary: string; expectedAmountLuna: number
   chainReference: string; status: string; buyerWallet?: string; expiresAt: string; purchasedAt?: string
+  warrantyNote?: string; returnNote?: string
   reward: { current: number; threshold: number; description: string }
 }
 

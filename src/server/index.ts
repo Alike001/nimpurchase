@@ -28,6 +28,7 @@ async function viewPurchase(id: string) {
   return { id: purchase.id, merchantName: merchant.rows[0]?.display_name ?? 'Merchant', merchantWallet: purchase.merchantWalletSnapshot,
     itemSummary: purchase.items.map((item) => item.quantity > 1 ? `${item.quantity} × ${item.name}` : item.name).join(', '), expectedAmountLuna: purchase.expectedAmountLuna,
     chainReference: purchase.chainReference, status: purchase.status, buyerWallet: purchase.buyerWallet, expiresAt: purchase.expiresAt.toISOString(), purchasedAt: purchase.paymentDetectedAt?.toISOString(),
+    warrantyNote: purchase.warrantyNote, returnNote: purchase.returnNote,
     reward: { current: Number(current.rows[0].count), threshold: purchase.rewardRuleSnapshot.threshold, description: purchase.rewardRuleSnapshot.rewardDescription } }
 }
 
