@@ -13,6 +13,6 @@ export function isProviderError(value: unknown): value is { error: { message: st
 
 export function userFacingWalletError(error: unknown): string {
   if (isProviderError(error)) return error.error.message
-  if (error instanceof Error && /denied|reject/i.test(error.message)) return 'Payment was cancelled in Nimiq Pay.'
+  if (error instanceof Error && /denied|reject|cancel/i.test(error.message)) return 'Payment cancelled. You can try again whenever you’re ready.'
   return 'Nimiq Pay could not complete the payment request. Please try again.'
 }

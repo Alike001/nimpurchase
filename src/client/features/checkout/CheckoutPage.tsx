@@ -14,7 +14,7 @@ export function CheckoutPage({ purchaseId }: { purchaseId: string }) {
   useEffect(() => {
     if (!purchase || !['PAYMENT_SUBMITTED', 'PAYMENT_DETECTED'].includes(purchase.status)) return
     const poll = () => {
-      void purchaseApi.verify(purchaseId, txHash).then(({ status }) => { setError(undefined); setPurchase((current) => current && { ...current, status }) }).catch(() => setError('We could not check this purchase right now. We’ll keep trying.'))
+      void purchaseApi.verify(purchaseId, txHash).then(({ status }) => { setError(undefined); setPurchase((current) => current && { ...current, status }) }).catch(() => setError('We can’t verify this payment yet. Your payment hasn’t been lost. We’ll keep checking.'))
     }
     poll()
     const timer = window.setInterval(poll, 3_000)
