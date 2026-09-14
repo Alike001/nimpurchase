@@ -2,7 +2,7 @@ import { CheckoutPage } from '../features/checkout/CheckoutPage'
 import { PurchasePage } from '../features/purchases/PurchasePage'
 import { HistoryPage } from '../features/purchases/HistoryPage'
 import { MerchantPage } from '../features/merchant/MerchantPage'
-import heroImage from '../assets/nimpurchase-hero.png'
+import { PassportPreview } from '../features/purchases/PassportPreview'
 
 export function App() {
   const checkoutMatch = window.location.pathname.match(/^\/checkout\/([^/]+)$/)
@@ -13,12 +13,9 @@ export function App() {
   if (window.location.pathname === '/merchant') return <MerchantPage />
   return (
     <main className="landing">
-      <nav className="landing-nav" aria-label="Main navigation"><a className="wordmark" href="/">NimPurchase</a><a className="nav-link" href="/merchant">For merchants</a></nav>
-      <section className="hero">
-        <div className="hero-copy"><p className="eyebrow">Direct payment. Useful after.</p><h1>Keep every purchase useful.</h1><p className="hero-lede">Pay a merchant directly with NIM. NimPurchase keeps your verified receipt, support, and reward progress in one card.</p><div className="hero-actions"><a className="primary" href="/merchant">Create a checkout</a><a className="text-link" href="#how-it-works">See how it works</a></div><p className="trust-note">Your money goes straight to the merchant. NimPurchase never holds it.</p></div>
-        <img className="hero-image" src={heroImage} alt="Coffee and a printed purchase receipt on a café counter" />
-      </section>
-      <section className="flow" id="how-it-works" aria-labelledby="flow-heading"><p className="eyebrow">How it works</p><h2 id="flow-heading">A purchase that stays useful.</h2><div className="flow-grid"><article><span>01</span><h3>Merchant creates checkout</h3><p>Set an item and NIM price, then share one compact link.</p></article><article><span>02</span><h3>Customer pays directly</h3><p>Nimiq Pay asks the customer to approve payment to the merchant wallet.</p></article><article><span>03</span><h3>Purchase becomes useful</h3><p>After verification, the card keeps receipt, support, and loyalty progress together.</p></article></div></section>
+      <a className="skip-link" href="#main-content">Skip to content</a><nav className="landing-nav" aria-label="Main navigation"><a className="wordmark" href="/"><span aria-hidden="true">⬡</span>NimPurchase</a><a className="nav-link" href="/merchant">Merchant workspace</a></nav>
+      <section className="hero" id="main-content"><div className="hero-copy"><p className="eyebrow">NIM payments that keep working</p><h1>Pay once. You’re already a regular.</h1><p className="hero-lede">Every NIM payment becomes a verified purchase card with receipts, rewards and merchant support. No loyalty signup required.</p><div className="hero-actions"><a className="primary" href="/merchant">Create a sale</a><a className="text-link" href="#how-it-works">See the loop</a></div><ul className="trust-list"><li>Paid directly to the merchant</li><li>Verified with Nimiq</li><li>No merchant account to create</li></ul></div><PassportPreview /></section>
+      <section className="flow" id="how-it-works" aria-labelledby="flow-heading"><p className="eyebrow">The Purchase Passport loop</p><h2 id="flow-heading">A payment that brings customers back.</h2><div className="flow-grid"><article><span>01</span><h3>Create a sale</h3><p>A merchant sets an item and NIM price, then shares one checkout.</p></article><article><span>02</span><h3>Pay directly</h3><p>Nimiq Pay confirms a direct payment to the merchant’s account.</p></article><article><span>03</span><h3>Keep the Passport</h3><p>The verified card carries a receipt, reward progress and support.</p></article></div></section>
     </main>
   )
 }

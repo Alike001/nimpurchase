@@ -20,22 +20,23 @@
     "@nimiq/mini-app-sdk": "0.1.0",
     "@vitejs/plugin-react": "latest",
     "pg": "latest",
-    "react": "latest",
-    "react-dom": "latest"
+    "qrcode.react": "^4.2.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   },
   "devDependencies": {
     "@eslint/js": "latest",
+    "@testing-library/react": "latest",
     "@types/node": "latest",
     "@types/pg": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
-    "@testing-library/react": "latest",
     "eslint": "latest",
     "globals": "latest",
     "jsdom": "29.1.1",
+    "tsx": "latest",
     "typescript": "latest",
     "typescript-eslint": "latest",
-    "tsx": "latest",
     "vite": "latest",
     "vitest": "latest"
   }
