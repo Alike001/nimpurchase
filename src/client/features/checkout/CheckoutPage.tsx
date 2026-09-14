@@ -14,7 +14,7 @@ export function CheckoutPage({ purchaseId }: { purchaseId: string }) {
   useEffect(() => {
     if (!purchase || !['PAYMENT_SUBMITTED', 'PAYMENT_DETECTED'].includes(purchase.status)) return
     const poll = () => {
-      void purchaseApi.verify(purchaseId, txHash).then(({ status }) => setPurchase((current) => current && { ...current, status })).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'We could not check your payment yet.'))
+      void purchaseApi.verify(purchaseId, txHash).then(({ status }) => { setError(undefined); setPurchase((current) => current && { ...current, status }) }).catch(() => setError('We could not check this purchase right now. We’ll keep trying.'))
     }
     poll()
     const timer = window.setInterval(poll, 3_000)
@@ -34,12 +34,15 @@ export function CheckoutPage({ purchaseId }: { purchaseId: string }) {
     } catch (reason) { setError(userFacingWalletError(reason)) } finally { setIsPaying(false) }
   }
 
-  if (error && !purchase) return <main className="app-shell"><p role="alert">{error}</p><button onClick={() => window.location.reload()}>Try again</button></main>
-  if (!purchase) return <main className="app-shell"><p>Loading your purchase…</p></main>
+  if (error && !purchase) return <main className="app-shell checkout-page"><p role="alert">{error}</p><button onClick={() => window.location.reload()}>Try again</button></main>
+  if (!purchase) return <main className="app-shell checkout-page"><p className="eyebrow">NimPurchase</p><h1>Loading your checkout…</h1></main>
   const completed = purchase.status === 'ACTIVE'
-  return <main className="app-shell"><p className="eyebrow">{purchase.merchantName}</p><h1>{purchase.itemSummary}</h1><p className="amount">{formatNim(purchase.expectedAmountLuna)}</p><p aria-live="polite">{isPaying ? 'Confirm payment in Nimiq Pay' : paymentStatusCopy(purchase.status)}</p>
-    {!completed && <button className="primary" disabled={isPaying || purchase.status !== 'PAYMENT_PENDING'} onClick={() => void pay()}>{isPaying ? 'Waiting for approval…' : 'Pay with NIM'}</button>}
-    {completed && <a className="primary" href={`/purchases/${purchase.id}`}>Open purchase card</a>}
-    {error && <p role="alert">{error}</p>}
+  const status = isPaying ? 'Confirm payment in Nimiq Pay' : paymentStatusCopy(purchase.status)
+  return <main className="app-shell checkout-page"><a className="back-link" href="/">NimPurchase</a><section className="checkout-card"><p className="eyebrow">{purchase.merchantName}</p><h1>{purchase.itemSummary}</h1><p className="checkout-direction">Paying this merchant directly</p><p className="amount checkout-amount">{formatNim(purchase.expectedAmountLuna)}</p><div className={`payment-status status-${purchase.status.toLowerCase()}`} aria-live="polite"><span aria-hidden="true" />{status}</div>
+    {!completed && <button className="primary checkout-button" disabled={isPaying || purchase.status !== 'PAYMENT_PENDING'} onClick={() => void pay()}>{isPaying ? 'Waiting for approval…' : 'Pay with NIM'}</button>}
+    {completed && <div className="checkout-actions"><a className="primary checkout-button" href={`/purchases/${purchase.id}`}>Open purchase card</a><a className="text-link" href="/purchases">View purchase history</a></div>}
+    {purchase.status === 'PAYMENT_PENDING' && <p className="checkout-reassurance">NimPurchase never holds your money.</p>}
+    {error && <p className="checkout-error" role="alert">{error}</p>}
+  </section>
   </main>
 }
