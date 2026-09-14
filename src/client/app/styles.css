@@ -44,4 +44,15 @@ button:disabled { cursor: wait; opacity: .65; }
 .flow-grid span { color: #8de1bd; font-size: .85rem; font-weight: 800; letter-spacing: .1em; }
 .flow-grid h3 { font-size: 1.25rem; margin: 1.5rem 0 .25rem; }
 .flow-grid p { font-size: 1rem; margin: 0; }
+.page-intro { max-width: 34rem; }
+.form-card, .share-card { display: grid; gap: 1rem; background: #11312b; border-radius: 1.5rem; padding: 1.5rem; margin: 2rem 0; }
+.form-card h2, .share-card h2, .sales-section h2 { margin: 0; font-size: 1.5rem; }
+label { display: grid; gap: .45rem; color: #d7e8e2; font-size: .94rem; font-weight: 700; }
+label em, details em { color: #96b8aa; font-style: normal; font-weight: 500; }
+input { width: 100%; border: 1px solid #35645a; border-radius: .7rem; background: #09231f; color: #edf7f3; font: inherit; padding: .85rem .9rem; }
+input:focus { outline: 3px solid #8de1bd66; border-color: #8de1bd; }
+details { color: #d7e8e2; } summary { cursor: pointer; font-weight: 700; } details label { margin-top: 1rem; }
+.checkout-url { overflow-wrap: anywhere; color: #bde6d4; font-size: .95rem; }
+.share-card .text-link { padding: .25rem 0; }
+.sales-section { margin-top: 3.5rem; } .sales-list { list-style: none; padding: 0; margin: 1rem 0; } .sales-list li { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #295147; padding: 1rem 0; } .sales-list small { color: #8de1bd; text-transform: capitalize; } .empty-copy { color: #bdd1c9; } .form-error { color: #ffc6bd; }
 @media (min-width: 48rem) { .landing { padding: 1.75rem 3rem 6rem; } .hero { grid-template-columns: 1.1fr .9fr; } .hero-image { max-height: 39rem; } .flow-grid { grid-template-columns: repeat(3, 1fr); } }
