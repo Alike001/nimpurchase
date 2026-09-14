@@ -1,6 +1,7 @@
 import { CheckoutPage } from '../features/checkout/CheckoutPage'
 import { PurchasePage } from '../features/purchases/PurchasePage'
 import { HistoryPage } from '../features/purchases/HistoryPage'
+import { MerchantPage } from '../features/merchant/MerchantPage'
 
 export function App() {
   const checkoutMatch = window.location.pathname.match(/^\/checkout\/([^/]+)$/)
@@ -8,6 +9,7 @@ export function App() {
   const purchaseMatch = window.location.pathname.match(/^\/purchases\/([^/]+)$/)
   if (purchaseMatch) return <PurchasePage purchaseId={purchaseMatch[1]} />
   if (window.location.pathname === '/purchases') return <HistoryPage />
+  if (window.location.pathname === '/merchant') return <MerchantPage />
   return (
     <main className="app-shell">
       <p className="eyebrow">NimPurchase</p>
