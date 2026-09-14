@@ -12,7 +12,8 @@
     "build": "tsc --noEmit && vite build",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "dev:api": "tsx watch src/server/index.ts"
   },
   "dependencies": {
     "@nimiq/mini-app-sdk": "0.1.0",
@@ -31,6 +32,7 @@
     "globals": "latest",
     "typescript": "latest",
     "typescript-eslint": "latest",
+    "tsx": "latest",
     "vite": "latest",
     "vitest": "latest"
   }

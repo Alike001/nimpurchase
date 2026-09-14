@@ -20,3 +20,8 @@ body { margin: 0; }
 h1 { font-size: clamp(2.5rem, 11vw, 4.5rem); line-height: 0.98; margin: 0.75rem 0 1.5rem; }
 
 p { color: #c7d9d3; font-size: 1.1rem; line-height: 1.6; }
+
+button, .primary { border: 0; border-radius: 999px; background: #8de1bd; color: #09211d; cursor: pointer; display: inline-block; font: inherit; font-weight: 800; margin-top: 1rem; padding: .9rem 1.25rem; text-decoration: none; }
+button:disabled { cursor: wait; opacity: .65; }
+.amount { color: #fff; font-size: 1.8rem; font-weight: 800; }
+.purchase-card { background: #14332e; border-radius: 1.5rem; padding: 1.5rem; }
