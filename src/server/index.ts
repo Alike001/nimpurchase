@@ -8,7 +8,9 @@ import { verifyPurchasePayment } from './purchases/verification-service'
 const databaseUrl = process.env.DATABASE_URL
 const rpcUrl = process.env.NIMIQ_RPC_URL
 const network = process.env.NIMIQ_NETWORK
-if (!databaseUrl || !rpcUrl || !network) throw new Error('DATABASE_URL, NIMIQ_RPC_URL, and NIMIQ_NETWORK are required.')
+const publicAppUrl = process.env.PUBLIC_APP_URL
+if (!databaseUrl || !rpcUrl || !network || !publicAppUrl) throw new Error('DATABASE_URL, NIMIQ_RPC_URL, NIMIQ_NETWORK, and PUBLIC_APP_URL are required.')
+const publicAppOrigin = new URL(publicAppUrl).origin
 const pool = new Pool({ connectionString: databaseUrl })
 const repository = new PostgresPurchaseRepository(pool)
 const adapter = new NimiqJsonRpcAdapter(rpcUrl)
@@ -70,7 +72,8 @@ createServer(async (request, response) => {
       if (!merchant.rows[0] || !body.itemName || typeof priceLuna !== 'number' || !Number.isSafeInteger(priceLuna) || priceLuna <= 0) return send(response, 400, { error: 'A merchant, item name, and positive Luna price are required.' })
       const id = randomUUID(); const chainReference = `np:v1:${opaqueId()}`; const now = new Date(); const expiresAt = new Date(now.getTime() + 30 * 60_000)
       await repository.create({ id, chainReference: chainReference as `np:v1:${string}`, merchantId: merchantMatch[1], merchantWalletSnapshot: merchant.rows[0].wallet_address, expectedAmountLuna: priceLuna, currency: 'NIM', rewardRuleSnapshot: { type: 'VISIT_COUNT', threshold: body.threshold && body.threshold > 0 ? body.threshold : 5, rewardDescription: body.rewardDescription || 'Reward available' }, warrantyNote: body.warrantyNote, returnNote: body.returnNote, status: 'PAYMENT_PENDING', createdAt: now, expiresAt, items: [{ id: randomUUID(), name: body.itemName, quantity: 1, unitPriceLuna: priceLuna, lineTotalLuna: priceLuna }] })
-      return send(response, 201, { id, checkoutPath: `/checkout/${id}` })
+      const checkoutPath = `/checkout/${id}`
+      return send(response, 201, { id, checkoutPath, checkoutUrl: new URL(checkoutPath, publicAppOrigin).toString() })
     }
     if (request.method === 'GET' && merchantMatch) {
       const ids = await pool.query<{ id: string }>('SELECT id FROM purchases WHERE merchant_id = $1 ORDER BY created_at DESC', [merchantMatch[1]])

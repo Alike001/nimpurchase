@@ -20,7 +20,7 @@ npm run dev -- --host
 
 `npm run db:migrate` uses the app's PostgreSQL driver, so it does not require the separate `psql` command-line program. The API command loads `.env` itself. With Node 22+ this uses Node's built-in `--env-file` support; an already-set shell variable still takes precedence.
 
-Open the displayed network URL in Nimiq Pay while the computer and device share a network. A normal browser is useful for UI development, but it cannot provide the real Mini App wallet integration.
+For a phone test, set `PUBLIC_APP_URL` in `.env` to the Vite network address (for example `http://192.168.1.20:5173`), then restart `npm run dev:api`. Open that same address in Nimiq Pay while the computer and device share a network. Merchant checkout links are generated from this value. A normal browser is useful for UI development, but it cannot provide the real Mini App wallet integration.
 
 ```sh
 npm run test
