@@ -41,7 +41,8 @@ createServer(async (request, response) => {
     }
     if (request.method === 'GET' && match?.[1] && !match[2]) { const view = await viewPurchase(match[1]); return send(response, view ? 200 : 404, view ?? { error: 'Purchase not found.' }) }
     if (request.method === 'POST' && match?.[1] && (match[2] === 'payment' || match[2] === 'verify')) {
-      const { txHash } = await readJson(request); if (!txHash) return send(response, 400, { error: 'Transaction hash is required.' })
+      const { txHash: suppliedTxHash } = await readJson(request); const stored = await repository.findById(match[1]); const txHash = suppliedTxHash ?? stored?.txHash
+      if (!txHash) return send(response, 400, { error: 'Transaction hash is required.' })
       const status = await verifyPurchasePayment({ repository, adapter, purchaseId: match[1], txHash, network })
       return send(response, 200, { status: status === 'FINALIZED' ? 'ACTIVE' : status === 'DETECTED' ? 'PAYMENT_DETECTED' : status === 'RETRYABLE_NOT_FOUND' ? 'PAYMENT_SUBMITTED' : 'PAYMENT_MISMATCH' })
     }

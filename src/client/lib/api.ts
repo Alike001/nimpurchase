@@ -16,6 +16,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const purchaseApi = {
   get: (purchaseId: string) => request<PurchaseView>(`/api/purchases/${purchaseId}`),
   submit: (purchaseId: string, txHash: string) => request<{ status: string }>(`/api/purchases/${purchaseId}/payment`, { method: 'POST', body: JSON.stringify({ txHash }) }),
-  verify: (purchaseId: string, txHash: string) => request<{ status: string }>(`/api/purchases/${purchaseId}/verify`, { method: 'POST', body: JSON.stringify({ txHash }) }),
+  verify: (purchaseId: string, txHash?: string) => request<{ status: string }>(`/api/purchases/${purchaseId}/verify`, { method: 'POST', body: JSON.stringify({ txHash }) }),
   history: (wallet: string) => request<PurchaseView[]>(`/api/purchases?buyerWallet=${encodeURIComponent(wallet)}`),
 }

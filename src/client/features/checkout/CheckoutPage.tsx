@@ -12,7 +12,7 @@ export function CheckoutPage({ purchaseId }: { purchaseId: string }) {
 
   useEffect(() => { void purchaseApi.get(purchaseId).then(setPurchase).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Could not load checkout.')) }, [purchaseId])
   useEffect(() => {
-    if (!txHash || !purchase || !['PAYMENT_SUBMITTED', 'PAYMENT_DETECTED'].includes(purchase.status)) return
+    if (!purchase || !['PAYMENT_SUBMITTED', 'PAYMENT_DETECTED'].includes(purchase.status)) return
     const timer = window.setInterval(() => {
       void purchaseApi.verify(purchaseId, txHash).then(({ status }) => setPurchase((current) => current && { ...current, status })).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'We could not check your payment yet.'))
     }, 3_000)
