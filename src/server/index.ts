@@ -44,6 +44,24 @@ createServer(async (request, response) => {
       return send(response, 201, { id, displayName: body.displayName, walletAddress: body.walletAddress })
     }
     const merchantMatch = url.pathname.match(/^\/api\/merchants\/([^/]+)\/purchases$/)
+    const supportMatch = url.pathname.match(/^\/api\/purchases\/([^/]+)\/support$/)
+    if (request.method === 'POST' && supportMatch) {
+      const body = await readJson(request) as { buyerWallet?: string; message?: string }
+      const purchase = await repository.findById(supportMatch[1])
+      if (!purchase || purchase.status !== 'ACTIVE' || !purchase.buyerWallet || purchase.buyerWallet !== body.buyerWallet || !body.message?.trim()) return send(response, 400, { error: 'Support is available only for your active purchase.' })
+      const id = randomUUID(); await pool.query('INSERT INTO support_requests (id, purchase_id, buyer_wallet, status, message) VALUES ($1,$2,$3,$4,$5)', [id, purchase.id, purchase.buyerWallet, 'OPEN', body.message.trim()])
+      return send(response, 201, { id, status: 'OPEN' })
+    }
+    const merchantSupportMatch = url.pathname.match(/^\/api\/merchants\/([^/]+)\/support(?:\/([^/]+))?$/)
+    if (request.method === 'GET' && merchantSupportMatch) {
+      const rows = await pool.query('SELECT s.id, s.purchase_id AS "purchaseId", s.status, s.message, s.created_at AS "createdAt" FROM support_requests s JOIN purchases p ON p.id = s.purchase_id WHERE p.merchant_id = $1 ORDER BY s.created_at DESC', [merchantSupportMatch[1]])
+      return send(response, 200, rows.rows)
+    }
+    if (request.method === 'PATCH' && merchantSupportMatch?.[2]) {
+      const body = await readJson(request) as { status?: string }; if (!['OPEN', 'IN_REVIEW', 'RESOLVED'].includes(body.status ?? '')) return send(response, 400, { error: 'Invalid support status.' })
+      await pool.query('UPDATE support_requests SET status = $1, updated_at = now() WHERE id = $2 AND purchase_id IN (SELECT id FROM purchases WHERE merchant_id = $3)', [body.status, merchantSupportMatch[2], merchantSupportMatch[1]])
+      return send(response, 200, { status: body.status })
+    }
     if (request.method === 'POST' && merchantMatch) {
       const body = await readJson(request) as { itemName?: string; description?: string; priceLuna?: number; warrantyNote?: string; returnNote?: string; threshold?: number; rewardDescription?: string }
       const merchant = await pool.query<{ wallet_address: string }>('SELECT wallet_address FROM merchants WHERE id = $1', [merchantMatch[1]])

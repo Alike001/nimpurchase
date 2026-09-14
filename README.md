@@ -13,6 +13,8 @@ It is not a POS, inventory system, accounting product, refund mechanism, NFT pro
 ```sh
 cp .env.example .env
 npm install
+npm run db:migrate
+npm run dev:api
 npm run dev -- --host
 ```
 
@@ -27,6 +29,8 @@ npm run build
 ## Configuration
 
 `DATABASE_URL`, `NIMIQ_RPC_URL`, `NIMIQ_NETWORK`, and `PUBLIC_APP_URL` are runtime configuration. Do not commit an `.env` file, RPC credentials, or private keys.
+
+Use `/merchant` to create the first merchant profile and checkout. This keeps the receiving wallet server-side and avoids a committed seed wallet.
 
 ## License
 
