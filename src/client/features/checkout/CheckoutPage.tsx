@@ -13,9 +13,11 @@ export function CheckoutPage({ purchaseId }: { purchaseId: string }) {
   useEffect(() => { void purchaseApi.get(purchaseId).then(setPurchase).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Could not load checkout.')) }, [purchaseId])
   useEffect(() => {
     if (!purchase || !['PAYMENT_SUBMITTED', 'PAYMENT_DETECTED'].includes(purchase.status)) return
-    const timer = window.setInterval(() => {
+    const poll = () => {
       void purchaseApi.verify(purchaseId, txHash).then(({ status }) => setPurchase((current) => current && { ...current, status })).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'We could not check your payment yet.'))
-    }, 3_000)
+    }
+    poll()
+    const timer = window.setInterval(poll, 3_000)
     return () => window.clearInterval(timer)
   }, [purchase, purchaseId, txHash])
 
