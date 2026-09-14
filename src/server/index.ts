@@ -42,6 +42,11 @@ createServer(async (request, response) => {
     if (request.method === 'POST' && url.pathname === '/api/merchants') {
       const body = await readJson(request) as { displayName?: string; walletAddress?: string }
       if (!body.displayName || !body.walletAddress) return send(response, 400, { error: 'Merchant name and receiving address are required.' })
+      // Merchant wallet-signature authentication is intentionally deferred for the MVP.
+      // During local and Mini App setup, using the same receiving account again should
+      // reopen its existing workspace instead of surfacing a database constraint error.
+      const existing = await pool.query<{ id: string; display_name: string; wallet_address: string }>('SELECT id, display_name, wallet_address FROM merchants WHERE wallet_address = $1', [body.walletAddress])
+      if (existing.rows[0]) return send(response, 200, { id: existing.rows[0].id, displayName: existing.rows[0].display_name, walletAddress: existing.rows[0].wallet_address, resumed: true })
       const id = randomUUID(); const slug = `${body.displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${id.slice(0, 8)}`
       await pool.query('INSERT INTO merchants (id, display_name, wallet_address, slug) VALUES ($1,$2,$3,$4)', [id, body.displayName, body.walletAddress, slug])
       return send(response, 201, { id, displayName: body.displayName, walletAddress: body.walletAddress })
