@@ -1,6 +1,6 @@
 CREATE TYPE purchase_status AS ENUM (
   'DRAFT', 'PAYMENT_PENDING', 'PAYMENT_SUBMITTED', 'PAYMENT_DETECTED',
-  'VERIFIED', 'ACTIVE', 'EXPIRED', 'PAYMENT_MISMATCH', 'PAYMENT_FAILED', 'CANCELLED'
+  'ACTIVE', 'EXPIRED', 'PAYMENT_MISMATCH', 'PAYMENT_FAILED', 'CANCELLED'
 );
 CREATE TYPE support_status AS ENUM ('OPEN', 'IN_REVIEW', 'RESOLVED');
 
@@ -84,5 +84,5 @@ CREATE TABLE verification_attempts (
 );
 
 CREATE INDEX purchases_buyer_wallet_active_idx ON purchases (buyer_wallet, created_at DESC)
-  WHERE status IN ('VERIFIED', 'ACTIVE');
+  WHERE status = 'ACTIVE';
 CREATE INDEX verification_attempts_purchase_idx ON verification_attempts (purchase_id, created_at DESC);

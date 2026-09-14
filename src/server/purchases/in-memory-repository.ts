@@ -55,8 +55,6 @@ export class InMemoryPurchaseRepository implements PurchaseRepository {
     const purchase = this.purchases.get(purchaseId)
     if (!purchase) throw new Error('Purchase not found.')
     if (purchase.status === 'ACTIVE') return { activated: false, rewardCredited: false }
-    if (purchase.status === 'PAYMENT_DETECTED') assertPurchaseTransition(purchase.status, 'VERIFIED')
-    purchase.status = 'VERIFIED'
     purchase.finalizedAt ??= new Date()
     assertPurchaseTransition(purchase.status, 'ACTIVE')
     purchase.status = 'ACTIVE'

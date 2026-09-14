@@ -3,7 +3,6 @@ export const PURCHASE_STATUSES = [
   'PAYMENT_PENDING',
   'PAYMENT_SUBMITTED',
   'PAYMENT_DETECTED',
-  'VERIFIED',
   'ACTIVE',
   'EXPIRED',
   'PAYMENT_MISMATCH',
@@ -17,8 +16,7 @@ const ALLOWED_TRANSITIONS: Readonly<Record<PurchaseStatus, readonly PurchaseStat
   DRAFT: ['PAYMENT_PENDING', 'CANCELLED'],
   PAYMENT_PENDING: ['PAYMENT_SUBMITTED', 'EXPIRED', 'CANCELLED'],
   PAYMENT_SUBMITTED: ['PAYMENT_DETECTED', 'PAYMENT_MISMATCH', 'PAYMENT_FAILED', 'EXPIRED'],
-  PAYMENT_DETECTED: ['VERIFIED', 'PAYMENT_FAILED'],
-  VERIFIED: ['ACTIVE'],
+  PAYMENT_DETECTED: ['ACTIVE', 'PAYMENT_FAILED'],
   ACTIVE: [],
   EXPIRED: [],
   PAYMENT_MISMATCH: [],
@@ -37,5 +35,5 @@ export function assertPurchaseTransition(from: PurchaseStatus, to: PurchaseStatu
 }
 
 export function isVerifiedPurchase(status: PurchaseStatus): boolean {
-  return status === 'VERIFIED' || status === 'ACTIVE'
+  return status === 'ACTIVE'
 }

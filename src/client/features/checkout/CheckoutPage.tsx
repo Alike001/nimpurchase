@@ -34,7 +34,7 @@ export function CheckoutPage({ purchaseId }: { purchaseId: string }) {
 
   if (error && !purchase) return <main className="app-shell"><p role="alert">{error}</p><button onClick={() => window.location.reload()}>Try again</button></main>
   if (!purchase) return <main className="app-shell"><p>Loading your purchase…</p></main>
-  const completed = purchase.status === 'ACTIVE' || purchase.status === 'VERIFIED'
+  const completed = purchase.status === 'ACTIVE'
   return <main className="app-shell"><p className="eyebrow">{purchase.merchantName}</p><h1>{purchase.itemSummary}</h1><p className="amount">{formatNim(purchase.expectedAmountLuna)}</p><p aria-live="polite">{isPaying ? 'Confirm payment in Nimiq Pay' : paymentStatusCopy(purchase.status)}</p>
     {!completed && <button className="primary" disabled={isPaying || purchase.status !== 'PAYMENT_PENDING'} onClick={() => void pay()}>{isPaying ? 'Waiting for approval…' : 'Pay with NIM'}</button>}
     {completed && <a className="primary" href={`/purchases/${purchase.id}`}>Open purchase card</a>}
