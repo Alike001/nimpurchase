@@ -28,7 +28,7 @@ async function viewPurchase(id: string) {
   const merchant = await pool.query<{ display_name: string }>('SELECT display_name FROM merchants WHERE id = $1', [purchase.merchantId])
   const current = purchase.buyerWallet ? await pool.query<{ count: string }>("SELECT count(*) FROM reward_events WHERE merchant_id = $1 AND buyer_wallet = $2 AND reason = 'VERIFIED_PURCHASE'", [purchase.merchantId, purchase.buyerWallet]) : { rows: [{ count: '0' }] }
   return { id: purchase.id, merchantName: merchant.rows[0]?.display_name ?? 'Merchant', merchantWallet: purchase.merchantWalletSnapshot,
-    itemSummary: purchase.items.map((item) => item.quantity > 1 ? `${item.quantity} × ${item.name}` : item.name).join(', '), expectedAmountLuna: purchase.expectedAmountLuna,
+    itemSummary: purchase.items.map((item) => item.quantity > 1 ? `${item.quantity} × ${item.name}` : item.name).join(', '), itemDescription: purchase.items[0]?.description, expectedAmountLuna: purchase.expectedAmountLuna,
     chainReference: purchase.chainReference, status: purchase.status, buyerWallet: purchase.buyerWallet, expiresAt: purchase.expiresAt.toISOString(), purchasedAt: purchase.paymentDetectedAt?.toISOString(),
     warrantyNote: purchase.warrantyNote, returnNote: purchase.returnNote,
     reward: { current: Number(current.rows[0].count), threshold: purchase.rewardRuleSnapshot.threshold, description: purchase.rewardRuleSnapshot.rewardDescription } }
@@ -71,7 +71,7 @@ createServer(async (request, response) => {
       const priceLuna = body.priceLuna
       if (!merchant.rows[0] || !body.itemName || typeof priceLuna !== 'number' || !Number.isSafeInteger(priceLuna) || priceLuna <= 0) return send(response, 400, { error: 'A merchant, item name, and positive Luna price are required.' })
       const id = randomUUID(); const chainReference = `np:v1:${opaqueId()}`; const now = new Date(); const expiresAt = new Date(now.getTime() + 30 * 60_000)
-      await repository.create({ id, chainReference: chainReference as `np:v1:${string}`, merchantId: merchantMatch[1], merchantWalletSnapshot: merchant.rows[0].wallet_address, expectedAmountLuna: priceLuna, currency: 'NIM', rewardRuleSnapshot: { type: 'VISIT_COUNT', threshold: body.threshold && body.threshold > 0 ? body.threshold : 5, rewardDescription: body.rewardDescription || 'Reward available' }, warrantyNote: body.warrantyNote, returnNote: body.returnNote, status: 'PAYMENT_PENDING', createdAt: now, expiresAt, items: [{ id: randomUUID(), name: body.itemName, quantity: 1, unitPriceLuna: priceLuna, lineTotalLuna: priceLuna }] })
+      await repository.create({ id, chainReference: chainReference as `np:v1:${string}`, merchantId: merchantMatch[1], merchantWalletSnapshot: merchant.rows[0].wallet_address, expectedAmountLuna: priceLuna, currency: 'NIM', rewardRuleSnapshot: { type: 'VISIT_COUNT', threshold: body.threshold && body.threshold > 0 ? body.threshold : 5, rewardDescription: body.rewardDescription || 'Reward available' }, warrantyNote: body.warrantyNote, returnNote: body.returnNote, status: 'PAYMENT_PENDING', createdAt: now, expiresAt, items: [{ id: randomUUID(), name: body.itemName, description: body.description?.trim() || undefined, quantity: 1, unitPriceLuna: priceLuna, lineTotalLuna: priceLuna }] })
       const checkoutPath = `/checkout/${id}`
       return send(response, 201, { id, checkoutPath, checkoutUrl: new URL(checkoutPath, publicAppOrigin).toString() })
     }

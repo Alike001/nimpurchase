@@ -38,8 +38,8 @@ export class PostgresPurchaseRepository implements PurchaseRepository {
       )
       for (const item of purchase.items) {
         await client.query(
-          'INSERT INTO purchase_items (id, purchase_id, name, quantity, unit_price_luna, line_total_luna) VALUES ($1,$2,$3,$4,$5,$6)',
-          [item.id, purchase.id, item.name, item.quantity, item.unitPriceLuna, item.lineTotalLuna],
+          'INSERT INTO purchase_items (id, purchase_id, name, description, quantity, unit_price_luna, line_total_luna) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+          [item.id, purchase.id, item.name, item.description ?? null, item.quantity, item.unitPriceLuna, item.lineTotalLuna],
         )
       }
       await client.query('COMMIT')
@@ -54,7 +54,7 @@ export class PostgresPurchaseRepository implements PurchaseRepository {
     const row = purchaseResult.rows[0]
     if (!row) return undefined
     const itemResult = await this.pool.query<Purchase['items'][number]>(
-      'SELECT id, name, quantity, unit_price_luna AS "unitPriceLuna", line_total_luna AS "lineTotalLuna" FROM purchase_items WHERE purchase_id = $1', [id],
+      'SELECT id, name, description, quantity, unit_price_luna AS "unitPriceLuna", line_total_luna AS "lineTotalLuna" FROM purchase_items WHERE purchase_id = $1', [id],
     )
     return mapPurchase(row, itemResult.rows.map((item) => ({ ...item, unitPriceLuna: Number(item.unitPriceLuna), lineTotalLuna: Number(item.lineTotalLuna) })))
   }

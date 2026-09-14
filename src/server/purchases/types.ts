@@ -10,6 +10,7 @@ export type RewardRuleSnapshot = {
 export type PurchaseItem = {
   id: string
   name: string
+  description?: string
   quantity: number
   unitPriceLuna: number
   lineTotalLuna: number

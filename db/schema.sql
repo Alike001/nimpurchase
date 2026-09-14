@@ -47,6 +47,7 @@ CREATE TABLE purchase_items (
   id uuid PRIMARY KEY,
   purchase_id uuid NOT NULL REFERENCES purchases(id) ON DELETE CASCADE,
   name text NOT NULL,
+  description text,
   quantity integer NOT NULL CHECK (quantity > 0),
   unit_price_luna bigint NOT NULL CHECK (unit_price_luna > 0),
   line_total_luna bigint NOT NULL CHECK (line_total_luna > 0)
