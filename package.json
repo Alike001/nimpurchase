@@ -17,6 +17,7 @@
     "db:migrate": "node --env-file=.env --import tsx src/server/migrate.ts"
   },
   "dependencies": {
+    "@nimiq/core": "^2.21.0",
     "@nimiq/mini-app-sdk": "0.1.0",
     "@vitejs/plugin-react": "latest",
     "pg": "latest",

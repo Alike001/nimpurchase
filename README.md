@@ -32,7 +32,7 @@ npm run build
 
 `DATABASE_URL`, `NIMIQ_RPC_URL`, `NIMIQ_NETWORK`, and `PUBLIC_APP_URL` are runtime configuration. Do not commit an `.env` file, RPC credentials, or private keys. For the Nimiq Testnet, set `NIMIQ_NETWORK=TestAlbatross` exactly; this matches the transaction network identifier returned by Nimiq RPC.
 
-Use `/merchant` to create the first merchant profile and checkout. This keeps the receiving wallet server-side and avoids a committed seed wallet.
+Use `/merchant` inside Nimiq Pay to create or reopen a merchant workspace. NimPurchase lists the wallet's accounts first, asks the merchant to sign a short-lived sign-in message, and stores only a hashed session token. This proves control of the receiving account without exposing a private key. Manual address entry remains available, but it requires the same wallet confirmation before any sales or support data can be accessed.
 
 ## License
 

@@ -87,3 +87,24 @@ CREATE TABLE verification_attempts (
 CREATE INDEX purchases_buyer_wallet_active_idx ON purchases (buyer_wallet, created_at DESC)
   WHERE status = 'ACTIVE';
 CREATE INDEX verification_attempts_purchase_idx ON verification_attempts (purchase_id, created_at DESC);
+
+CREATE TABLE merchant_auth_challenges (
+  id uuid PRIMARY KEY,
+  wallet_address text NOT NULL,
+  display_name text NOT NULL,
+  message text NOT NULL,
+  expires_at timestamptz NOT NULL,
+  used_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE merchant_sessions (
+  id uuid PRIMARY KEY,
+  merchant_id uuid NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+  token_hash text NOT NULL UNIQUE,
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX merchant_sessions_expiry_idx ON merchant_sessions (expires_at);
+CREATE INDEX merchant_auth_challenges_expiry_idx ON merchant_auth_challenges (expires_at);

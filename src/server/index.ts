@@ -4,6 +4,8 @@ import { Pool } from 'pg'
 import { NimiqJsonRpcAdapter } from './nimiq/rpc-client'
 import { PostgresPurchaseRepository } from './purchases/postgres-purchase-repository'
 import { verifyPurchasePayment } from './purchases/verification-service'
+import { canonicalizeNimiqAddress, isMerchantAuthChallengeUsable, verifyNimiqSignedMessage } from './auth/nimiq-signature'
+import { createSessionToken, expiredSessionCookie, hashSessionToken, merchantSessionCookie, merchantSessionLifetimeSeconds, readCookie, sessionCookie } from './auth/session'
 
 const databaseUrl = process.env.DATABASE_URL
 const rpcUrl = process.env.NIMIQ_RPC_URL
@@ -14,14 +16,21 @@ const publicAppOrigin = new URL(publicAppUrl).origin
 const pool = new Pool({ connectionString: databaseUrl })
 const repository = new PostgresPurchaseRepository(pool)
 const adapter = new NimiqJsonRpcAdapter(rpcUrl)
+const secureCookies = publicAppOrigin.startsWith('https://')
 
 async function readJson(request: import('node:http').IncomingMessage): Promise<{ txHash?: string }> {
   let body = ''; for await (const chunk of request) body += String(chunk)
   return JSON.parse(body || '{}') as { txHash?: string }
 }
 function opaqueId(): string { return [...randomBytes(26)].map((byte) => '0123456789ABCDEFGHJKMNPQRSTVWXYZ'[byte % 32]).join('') }
-function send(response: import('node:http').ServerResponse, status: number, body: unknown): void {
-  response.writeHead(status, { 'content-type': 'application/json', 'access-control-allow-origin': '*' }); response.end(JSON.stringify(body))
+function send(response: import('node:http').ServerResponse, status: number, body: unknown, headers: Record<string, string> = {}): void {
+  response.writeHead(status, { 'content-type': 'application/json', 'access-control-allow-origin': publicAppOrigin, 'access-control-allow-credentials': 'true', ...headers }); response.end(JSON.stringify(body))
+}
+async function authenticatedMerchantId(request: import('node:http').IncomingMessage): Promise<string | undefined> {
+  const token = readCookie(request.headers.cookie, merchantSessionCookie)
+  if (!token) return undefined
+  const result = await pool.query<{ merchant_id: string }>('SELECT merchant_id FROM merchant_sessions WHERE token_hash = $1 AND expires_at > now()', [hashSessionToken(token)])
+  return result.rows[0]?.merchant_id
 }
 async function viewPurchase(id: string) {
   const purchase = await repository.findById(id); if (!purchase) return undefined
@@ -39,17 +48,39 @@ createServer(async (request, response) => {
     if (request.method === 'OPTIONS') return send(response, 204, {})
     const url = new URL(request.url ?? '/', 'http://localhost')
     const match = url.pathname.match(/^\/api\/purchases\/([^/]+)(?:\/(payment|verify))?$/)
-    if (request.method === 'POST' && url.pathname === '/api/merchants') {
+    if (request.method === 'POST' && url.pathname === '/api/merchant-auth/challenge') {
       const body = await readJson(request) as { displayName?: string; walletAddress?: string }
-      if (!body.displayName || !body.walletAddress) return send(response, 400, { error: 'Merchant name and receiving address are required.' })
-      // Merchant wallet-signature authentication is intentionally deferred for the MVP.
-      // During local and Mini App setup, using the same receiving account again should
-      // reopen its existing workspace instead of surfacing a database constraint error.
-      const existing = await pool.query<{ id: string; display_name: string; wallet_address: string }>('SELECT id, display_name, wallet_address FROM merchants WHERE wallet_address = $1', [body.walletAddress])
-      if (existing.rows[0]) return send(response, 200, { id: existing.rows[0].id, displayName: existing.rows[0].display_name, walletAddress: existing.rows[0].wallet_address, resumed: true })
-      const id = randomUUID(); const slug = `${body.displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${id.slice(0, 8)}`
-      await pool.query('INSERT INTO merchants (id, display_name, wallet_address, slug) VALUES ($1,$2,$3,$4)', [id, body.displayName, body.walletAddress, slug])
-      return send(response, 201, { id, displayName: body.displayName, walletAddress: body.walletAddress })
+      if (!body.displayName?.trim() || body.displayName.trim().length > 100 || !body.walletAddress) return send(response, 400, { error: 'Merchant name and receiving address are required.' })
+      let walletAddress: string
+      try { walletAddress = canonicalizeNimiqAddress(body.walletAddress) } catch { return send(response, 400, { error: 'Enter a valid Nimiq receiving address.' }) }
+      const id = randomUUID(); const expiresAt = new Date(Date.now() + 5 * 60_000); const nonce = randomBytes(24).toString('base64url')
+      const message = `Sign in to NimPurchase\n\nReceiving account: ${walletAddress}\nWebsite: ${publicAppOrigin}\nRequest: ${nonce}\nExpires: ${expiresAt.toISOString()}`
+      await pool.query('INSERT INTO merchant_auth_challenges (id, wallet_address, display_name, message, expires_at) VALUES ($1,$2,$3,$4,$5)', [id, walletAddress, body.displayName.trim(), message, expiresAt])
+      return send(response, 201, { challengeId: id, message, expiresAt: expiresAt.toISOString() })
+    }
+    if (request.method === 'POST' && url.pathname === '/api/merchant-auth/verify') {
+      const body = await readJson(request) as { challengeId?: string; publicKey?: string; signature?: string }
+      if (!body.challengeId || !body.publicKey || !body.signature) return send(response, 400, { error: 'The wallet confirmation response is incomplete.' })
+      const challenge = await pool.query<{ id: string; wallet_address: string; display_name: string; message: string; expires_at: Date; used_at: Date | null }>('SELECT id, wallet_address, display_name, message, expires_at, used_at FROM merchant_auth_challenges WHERE id = $1', [body.challengeId])
+      const proof = challenge.rows[0]
+      if (!proof || !isMerchantAuthChallengeUsable({ expiresAt: proof.expires_at, usedAt: proof.used_at }) || !verifyNimiqSignedMessage({ message: proof.message, publicKeyHex: body.publicKey, signatureHex: body.signature, expectedAddress: proof.wallet_address })) return send(response, 401, { error: 'Wallet confirmation was invalid or expired. Please try again.' })
+      const client = await pool.connect()
+      try {
+        await client.query('BEGIN')
+        const consumed = await client.query('UPDATE merchant_auth_challenges SET used_at = now() WHERE id = $1 AND used_at IS NULL AND expires_at > now() RETURNING id', [proof.id])
+        if (!consumed.rowCount) { await client.query('ROLLBACK'); return send(response, 401, { error: 'This wallet confirmation has already been used.' }) }
+        const id = randomUUID(); const slug = `${proof.display_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${id.slice(0, 8)}`
+        const merchant = await client.query<{ id: string; display_name: string; wallet_address: string }>('INSERT INTO merchants (id, display_name, wallet_address, slug) VALUES ($1,$2,$3,$4) ON CONFLICT (wallet_address) DO UPDATE SET wallet_address = EXCLUDED.wallet_address RETURNING id, display_name, wallet_address', [id, proof.display_name, proof.wallet_address, slug])
+        const token = createSessionToken(); const expiresAt = new Date(Date.now() + merchantSessionLifetimeSeconds * 1000)
+        await client.query('INSERT INTO merchant_sessions (id, merchant_id, token_hash, expires_at) VALUES ($1,$2,$3,$4)', [randomUUID(), merchant.rows[0].id, hashSessionToken(token), expiresAt])
+        await client.query('COMMIT')
+        return send(response, 200, { id: merchant.rows[0].id, displayName: merchant.rows[0].display_name, walletAddress: merchant.rows[0].wallet_address }, { 'set-cookie': sessionCookie(token, secureCookies) })
+      } catch (error) { await client.query('ROLLBACK'); throw error } finally { client.release() }
+    }
+    if (request.method === 'POST' && url.pathname === '/api/merchant-auth/logout') {
+      const token = readCookie(request.headers.cookie, merchantSessionCookie)
+      if (token) await pool.query('DELETE FROM merchant_sessions WHERE token_hash = $1', [hashSessionToken(token)])
+      return send(response, 200, {}, { 'set-cookie': expiredSessionCookie(secureCookies) })
     }
     const merchantMatch = url.pathname.match(/^\/api\/merchants\/([^/]+)\/purchases$/)
     const supportMatch = url.pathname.match(/^\/api\/purchases\/([^/]+)\/support$/)
@@ -62,15 +93,18 @@ createServer(async (request, response) => {
     }
     const merchantSupportMatch = url.pathname.match(/^\/api\/merchants\/([^/]+)\/support(?:\/([^/]+))?$/)
     if (request.method === 'GET' && merchantSupportMatch) {
+      if (await authenticatedMerchantId(request) !== merchantSupportMatch[1]) return send(response, 401, { error: 'Confirm your merchant account to continue.' })
       const rows = await pool.query('SELECT s.id, s.purchase_id AS "purchaseId", s.status, s.message, s.created_at AS "createdAt" FROM support_requests s JOIN purchases p ON p.id = s.purchase_id WHERE p.merchant_id = $1 ORDER BY s.created_at DESC', [merchantSupportMatch[1]])
       return send(response, 200, rows.rows)
     }
     if (request.method === 'PATCH' && merchantSupportMatch?.[2]) {
+      if (await authenticatedMerchantId(request) !== merchantSupportMatch[1]) return send(response, 401, { error: 'Confirm your merchant account to continue.' })
       const body = await readJson(request) as { status?: string }; if (!['OPEN', 'IN_REVIEW', 'RESOLVED'].includes(body.status ?? '')) return send(response, 400, { error: 'Invalid support status.' })
       await pool.query('UPDATE support_requests SET status = $1, updated_at = now() WHERE id = $2 AND purchase_id IN (SELECT id FROM purchases WHERE merchant_id = $3)', [body.status, merchantSupportMatch[2], merchantSupportMatch[1]])
       return send(response, 200, { status: body.status })
     }
     if (request.method === 'POST' && merchantMatch) {
+      if (await authenticatedMerchantId(request) !== merchantMatch[1]) return send(response, 401, { error: 'Confirm your merchant account to continue.' })
       const body = await readJson(request) as { itemName?: string; description?: string; priceLuna?: number; warrantyNote?: string; returnNote?: string; threshold?: number; rewardDescription?: string }
       const merchant = await pool.query<{ wallet_address: string }>('SELECT wallet_address FROM merchants WHERE id = $1', [merchantMatch[1]])
       const priceLuna = body.priceLuna
@@ -81,6 +115,7 @@ createServer(async (request, response) => {
       return send(response, 201, { id, checkoutPath, checkoutUrl: new URL(checkoutPath, publicAppOrigin).toString() })
     }
     if (request.method === 'GET' && merchantMatch) {
+      if (await authenticatedMerchantId(request) !== merchantMatch[1]) return send(response, 401, { error: 'Confirm your merchant account to continue.' })
       const ids = await pool.query<{ id: string }>('SELECT id FROM purchases WHERE merchant_id = $1 ORDER BY created_at DESC', [merchantMatch[1]])
       return send(response, 200, await Promise.all(ids.rows.map(({ id }) => viewPurchase(id))))
     }
