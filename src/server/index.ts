@@ -82,6 +82,17 @@ createServer(async (request, response) => {
       if (token) await pool.query('DELETE FROM merchant_sessions WHERE token_hash = $1', [hashSessionToken(token)])
       return send(response, 200, {}, { 'set-cookie': expiredSessionCookie(secureCookies) })
     }
+    if (request.method === 'GET' && url.pathname === '/api/merchant-auth/session') {
+      const merchantId = await authenticatedMerchantId(request)
+      if (!merchantId) return send(response, 401, { error: 'Confirm your merchant account to continue.' })
+      const merchant = await pool.query<{ id: string; display_name: string; wallet_address: string }>('SELECT id, display_name, wallet_address FROM merchants WHERE id = $1', [merchantId])
+      if (!merchant.rows[0]) return send(response, 401, { error: 'Confirm your merchant account to continue.' })
+      return send(response, 200, {
+        id: merchant.rows[0].id,
+        displayName: merchant.rows[0].display_name,
+        walletAddress: merchant.rows[0].wallet_address,
+      })
+    }
     const merchantMatch = url.pathname.match(/^\/api\/merchants\/([^/]+)\/purchases$/)
     const supportMatch = url.pathname.match(/^\/api\/purchases\/([^/]+)\/support$/)
     if (request.method === 'POST' && supportMatch) {

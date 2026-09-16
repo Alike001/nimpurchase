@@ -42,6 +42,7 @@ describe('merchant onboarding', () => {
       const url = String(input)
       if (url === '/api/merchant-auth/challenge') return response({ challengeId: 'challenge-1', message: 'Confirm this account', expiresAt: new Date().toISOString() }, 201)
       if (url === '/api/merchant-auth/verify') return response({ id: 'merchant-1', displayName: 'Alike Coffee', walletAddress: 'NQ12 CURRENT ACCOUNT' })
+      if (url === '/api/merchant-auth/session') return response({ id: 'merchant-1', displayName: 'Alike Coffee', walletAddress: 'NQ12 CURRENT ACCOUNT' })
       if (url.endsWith('/purchases') || url.endsWith('/support')) return response([])
       throw new Error(`Unexpected request: ${url} ${init?.method ?? 'GET'}`)
     })
@@ -79,5 +80,21 @@ describe('merchant onboarding', () => {
     expect((await screen.findByRole('alert')).textContent).toContain('Account confirmation cancelled')
     expect(fetchMock).not.toHaveBeenCalledWith('/api/merchant-auth/verify', expect.anything())
     expect(window.localStorage.getItem('nimpurchase:merchant-id')).toBeNull()
+  })
+
+  it('restores the merchant identity for an empty authenticated workspace', async () => {
+    window.localStorage.setItem('nimpurchase:merchant-id', 'merchant-1')
+    mocks.provider.mockResolvedValue({ listAccounts: vi.fn() })
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/merchant-auth/session') return response({ id: 'merchant-1', displayName: 'Alike Coffee', walletAddress: 'NQ15 LONG MERCHANT ADDRESS C5GF' })
+      if (url.endsWith('/purchases') || url.endsWith('/support')) return response([])
+      throw new Error(`Unexpected request: ${url}`)
+    }))
+
+    render(<MerchantPage />)
+
+    expect(await screen.findByRole('heading', { name: 'Hello, Alike Coffee.' })).toBeTruthy()
+    expect(screen.getByText(/Receiving to/).textContent).toContain('NQ15 LONG…C5GF')
   })
 })

@@ -45,6 +45,7 @@ async function jsonResponse<T>(response: Response): Promise<T> {
 export function MerchantPage() {
   const [merchantId, setMerchantId] = useState(() => window.localStorage.getItem(merchantStorageKey) ?? '')
   const [merchantName, setMerchantName] = useState('')
+  const [merchantWallet, setMerchantWallet] = useState('')
   const [link, setLink] = useState('')
   const [error, setError] = useState('')
   const [sales, setSales] = useState<Sale[]>([])
@@ -59,6 +60,7 @@ export function MerchantPage() {
     window.localStorage.removeItem(merchantStorageKey)
     setMerchantId('')
     setMerchantName('')
+    setMerchantWallet('')
     setSales([])
     setSupport([])
     setLink('')
@@ -67,19 +69,22 @@ export function MerchantPage() {
 
   async function loadWorkspace(): Promise<void> {
     if (!merchantId) return
-    const [salesResponse, supportResponse] = await Promise.all([
+    const [sessionResponse, salesResponse, supportResponse] = await Promise.all([
+      fetch('/api/merchant-auth/session'),
       fetch(`/api/merchants/${merchantId}/purchases`),
       fetch(`/api/merchants/${merchantId}/support`),
     ])
-    if (salesResponse.status === 401 || supportResponse.status === 401) {
+    if (sessionResponse.status === 401 || salesResponse.status === 401 || supportResponse.status === 401) {
       clearMerchant('Confirm your receiving account to reopen this workspace.')
       return
     }
+    const session = await jsonResponse<MerchantSession>(sessionResponse)
     const nextSales = await jsonResponse<Sale[]>(salesResponse)
     const nextSupport = await jsonResponse<SupportRequest[]>(supportResponse)
     setSales(nextSales)
     setSupport(nextSupport)
-    setMerchantName(nextSales[0]?.merchantName ?? '')
+    setMerchantName(session.displayName)
+    setMerchantWallet(session.walletAddress)
   }
 
   useEffect(() => {
@@ -126,6 +131,7 @@ export function MerchantPage() {
       }))
       window.localStorage.setItem(merchantStorageKey, merchant.id)
       setMerchantName(merchant.displayName)
+      setMerchantWallet(merchant.walletAddress)
       setMerchantId(merchant.id)
       setError('')
     } catch (reason) {
@@ -179,8 +185,10 @@ export function MerchantPage() {
   const activeSales = sales.filter((sale) => sale.status === 'ACTIVE')
   const activeToday = activeSales.filter((sale) => sale.purchasedAt && new Date(sale.purchasedAt).toDateString() === new Date().toDateString())
   const todayLuna = activeToday.reduce((sum, sale) => sum + sale.expectedAmountLuna, 0)
-  const returning = activeToday.filter((sale) => sale.buyerWallet
-    && activeSales.filter((other) => other.buyerWallet === sale.buyerWallet).length > 1).length
+  const returning = new Set(activeToday
+    .filter((sale) => sale.buyerWallet && activeSales.filter((other) => other.buyerWallet === sale.buyerWallet).length > 1)
+    .map((sale) => sale.buyerWallet)).size
+  const abbreviatedWallet = merchantWallet ? `${merchantWallet.slice(0, 9)}…${merchantWallet.slice(-4)}` : ''
 
   return <main className="app-shell merchant-page product-page">
     <header className="product-header">
@@ -189,6 +197,7 @@ export function MerchantPage() {
     </header>
     <p className="eyebrow">Merchant workspace</p>
     <h1>{merchantId ? `Hello, ${merchantName || sales[0]?.merchantName || 'merchant'}.` : 'Sell directly with NIM.'}</h1>
+    {merchantId && abbreviatedWallet && <p className="merchant-account">Receiving to <span>{abbreviatedWallet}</span></p>}
     <p className="page-intro">Create a sale, share one checkout, and give customers a Purchase Passport after they pay.</p>
 
     {!merchantId ? <form className="form-card merchant-onboarding" onSubmit={submit(authenticateMerchant)}>
@@ -217,9 +226,11 @@ export function MerchantPage() {
       <form className="form-card sale-form" onSubmit={submit(checkout)}>
         <div className="form-title"><p className="eyebrow">New sale</p><h2>Create a checkout in seconds</h2></div>
         <label>Item name<input name="item" placeholder="Flat white" required /></label>
-        <label>Short description <em>optional</em><input name="description" placeholder="A creamy double espresso" /></label>
         <label>Price in NIM<input name="price" inputMode="decimal" placeholder="1.50" required /></label>
-        <label>Warranty or return note <em>optional</em><input name="note" placeholder="Ask us within 7 days" /></label>
+        <details><summary>Add receipt details <em>optional</em></summary>
+          <label>Short description<input name="description" placeholder="A creamy double espresso" /></label>
+          <label>Warranty or return note<input name="note" placeholder="Ask us within 7 days" /></label>
+        </details>
         <details><summary>Add a loyalty reward <em>optional</em></summary>
           <label>Purchases needed<input name="threshold" inputMode="numeric" placeholder="5" /></label>
           <label>Reward description<input name="reward" placeholder="Free coffee" /></label>
