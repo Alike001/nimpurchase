@@ -11,6 +11,7 @@ export function App() {
   if (purchaseMatch) return <PurchasePage purchaseId={purchaseMatch[1]} />
   if (window.location.pathname === '/purchases') return <HistoryPage />
   if (window.location.pathname === '/merchant') return <MerchantPage />
+  if (window.nimiqPay || window.nimiq) return <HistoryPage />
   return (
     <main className="landing">
       <a className="skip-link" href="#main-content">Skip to content</a><nav className="landing-nav" aria-label="Main navigation"><a className="wordmark" href="/"><span aria-hidden="true">⬡</span>NimPurchase</a><a className="nav-link" href="/merchant">Merchant workspace</a></nav>
