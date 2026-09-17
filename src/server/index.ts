@@ -1,5 +1,9 @@
 import { createServer } from 'node:http'
 import { randomBytes, randomUUID } from 'node:crypto'
+import { readFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import { extname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { Pool } from 'pg'
 import { NimiqJsonRpcAdapter } from './nimiq/rpc-client'
 import { PostgresPurchaseRepository } from './purchases/postgres-purchase-repository'
@@ -17,6 +21,8 @@ const pool = new Pool({ connectionString: databaseUrl })
 const repository = new PostgresPurchaseRepository(pool)
 const adapter = new NimiqJsonRpcAdapter(rpcUrl)
 const secureCookies = publicAppOrigin.startsWith('https://')
+const staticDirectory = fileURLToPath(new URL('../../dist/', import.meta.url))
+const mimeTypes: Record<string, string> = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json; charset=utf-8' }
 
 async function readJson(request: import('node:http').IncomingMessage): Promise<{ txHash?: string }> {
   let body = ''; for await (const chunk of request) body += String(chunk)
@@ -25,6 +31,18 @@ async function readJson(request: import('node:http').IncomingMessage): Promise<{
 function opaqueId(): string { return [...randomBytes(26)].map((byte) => '0123456789ABCDEFGHJKMNPQRSTVWXYZ'[byte % 32]).join('') }
 function send(response: import('node:http').ServerResponse, status: number, body: unknown, headers: Record<string, string> = {}): void {
   response.writeHead(status, { 'content-type': 'application/json', 'access-control-allow-origin': publicAppOrigin, 'access-control-allow-credentials': 'true', ...headers }); response.end(JSON.stringify(body))
+}
+async function sendAppFile(response: import('node:http').ServerResponse, pathname: string): Promise<boolean> {
+  if (!existsSync(staticDirectory)) return false
+  const requested = resolve(staticDirectory, `.${pathname}`)
+  const target = pathname.startsWith('/assets/') && requested.startsWith(staticDirectory) ? requested : resolve(staticDirectory, 'index.html')
+  try {
+    response.writeHead(200, { 'content-type': mimeTypes[extname(target)] ?? 'application/octet-stream' })
+    response.end(await readFile(target))
+    return true
+  } catch {
+    return false
+  }
 }
 async function authenticatedMerchantId(request: import('node:http').IncomingMessage): Promise<string | undefined> {
   const token = readCookie(request.headers.cookie, merchantSessionCookie)
@@ -176,6 +194,7 @@ createServer(async (request, response) => {
       const status = await verifyPurchasePayment({ repository, adapter, purchaseId: match[1], txHash, network })
       return send(response, 200, { status: status === 'FINALIZED' ? 'ACTIVE' : status === 'DETECTED' ? 'PAYMENT_DETECTED' : status === 'RETRYABLE_NOT_FOUND' ? 'PAYMENT_SUBMITTED' : 'PAYMENT_MISMATCH' })
     }
+    if (request.method === 'GET' && !url.pathname.startsWith('/api/') && await sendAppFile(response, url.pathname)) return
     return send(response, 404, { error: 'Not found.' })
   } catch { return send(response, 500, { error: 'We could not check this purchase right now.' }) }
 }).listen(Number(process.env.PORT ?? 8787))

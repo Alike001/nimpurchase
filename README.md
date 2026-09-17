@@ -38,6 +38,8 @@ Use `/merchant` inside Nimiq Pay to create or reopen a merchant workspace. NimPu
 
 Deploy the frontend and API on the same origin, or on subdomains of the same site. This keeps Nimiq Pay wallet-confirmation cookies reliable. Set `PUBLIC_APP_URL` to the exact public HTTPS frontend URL. If the API is on a separate same-site origin, set `VITE_API_BASE_URL` at frontend build time and ensure it is the only allowed CORS origin.
 
+For a single-service deployment, run `npm run build` during the build step and `npm run start` as the start command. The Node service serves the built application and all deep links (including checkout and Purchase Passport links) while continuing to own `/api/*`.
+
 Before release:
 
 ```sh
