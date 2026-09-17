@@ -48,6 +48,18 @@ createServer(async (request, response) => {
     if (request.method === 'OPTIONS') return send(response, 204, {})
     const url = new URL(request.url ?? '/', 'http://localhost')
     const match = url.pathname.match(/^\/api\/purchases\/([^/]+)(?:\/(payment|verify))?$/)
+    if (request.method === 'GET' && url.pathname === '/api/health') {
+      const [database, nimiq] = await Promise.allSettled([
+        pool.query('SELECT 1'),
+        adapter.getLatestBlockHeight(),
+      ])
+      const healthy = database.status === 'fulfilled' && nimiq.status === 'fulfilled'
+      return send(response, healthy ? 200 : 503, {
+        status: healthy ? 'ok' : 'degraded',
+        database: database.status === 'fulfilled' ? 'ok' : 'unavailable',
+        nimiq: nimiq.status === 'fulfilled' ? { status: 'ok', network, latestBlockHeight: nimiq.value } : { status: 'unavailable', network },
+      })
+    }
     if (request.method === 'POST' && url.pathname === '/api/merchant-auth/challenge') {
       const body = await readJson(request) as { displayName?: string; walletAddress?: string }
       if (!body.displayName?.trim() || body.displayName.trim().length > 100 || !body.walletAddress) return send(response, 400, { error: 'Merchant name and receiving address are required.' })

@@ -26,4 +26,11 @@ describe('application entry routing', () => {
     expect(screen.getByText('Customer Purchase Passports')).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Pay once. You’re already a regular.' })).toBeNull()
   })
+
+  it('shows the public privacy disclosure outside the Mini App flow', () => {
+    window.history.replaceState({}, '', '/privacy')
+    render(<App />)
+    expect(screen.getByRole('heading', { name: 'Clear data, direct payments.' })).toBeTruthy()
+    expect(screen.getByText(/never holds NIM, private keys/)).toBeTruthy()
+  })
 })

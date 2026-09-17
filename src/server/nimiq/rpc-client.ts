@@ -25,13 +25,18 @@ export class NimiqJsonRpcAdapter implements NimiqChainAdapter {
     // height. `getMacroBlockOf` has provider-specific batch semantics, so it must
     // not be used with an inclusion height.
     const closingMacroBlockHeight = await this.callNumber('getMacroBlockAfter', [inclusionHeight])
+    const latestHeight = await this.getLatestBlockHeight()
+    return latestHeight >= closingMacroBlockHeight
+  }
+
+  public async getLatestBlockHeight(): Promise<number> {
     const latestBlock = await this.call('getLatestBlock', [false])
     if (!latestBlock || typeof latestBlock !== 'object' || !('number' in latestBlock)) {
       throw new Error('Nimiq RPC returned an invalid latest-block payload.')
     }
     const latestHeight = Number((latestBlock as { number: unknown }).number)
     if (!Number.isSafeInteger(latestHeight)) throw new Error('Nimiq RPC returned an invalid latest block height.')
-    return latestHeight >= closingMacroBlockHeight
+    return latestHeight
   }
 
   private async callNumber(method: string, params: unknown[]): Promise<number> {

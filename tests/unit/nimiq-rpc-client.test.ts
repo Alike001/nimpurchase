@@ -25,4 +25,11 @@ describe('Nimiq JSON-RPC adapter', () => {
     await expect(adapter.isTransactionFinalized(123)).resolves.toBe(true)
     expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toMatchObject({ method: 'getMacroBlockAfter', params: [123] })
   })
+
+  it('reports the current block height using the normalized latest-block shape', async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(response({ number: 4321 }))
+    const adapter = new NimiqJsonRpcAdapter('https://rpc.example', fetcher)
+    await expect(adapter.getLatestBlockHeight()).resolves.toBe(4321)
+    expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toMatchObject({ method: 'getLatestBlock', params: [false] })
+  })
 })
