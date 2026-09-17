@@ -16,5 +16,5 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["src", "tests", "vite.config.ts", "eslint.config.js"]
+    "include": ["api", "src", "tests", "vite.config.ts", "eslint.config.js"]
 }

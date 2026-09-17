@@ -16,6 +16,7 @@ const rpcUrl = process.env.NIMIQ_RPC_URL
 const network = process.env.NIMIQ_NETWORK
 const publicAppUrl = process.env.PUBLIC_APP_URL
 if (!databaseUrl || !rpcUrl || !network || !publicAppUrl) throw new Error('DATABASE_URL, NIMIQ_RPC_URL, NIMIQ_NETWORK, and PUBLIC_APP_URL are required.')
+const configuredNetwork = network
 const publicAppOrigin = new URL(publicAppUrl).origin
 const pool = new Pool({ connectionString: databaseUrl })
 const repository = new PostgresPurchaseRepository(pool)
@@ -61,7 +62,7 @@ async function viewPurchase(id: string) {
     reward: { current: Number(current.rows[0].count), threshold: purchase.rewardRuleSnapshot.threshold, description: purchase.rewardRuleSnapshot.rewardDescription } }
 }
 
-createServer(async (request, response) => {
+export async function handleRequest(request: import('node:http').IncomingMessage, response: import('node:http').ServerResponse): Promise<void> {
   try {
     if (request.method === 'OPTIONS') return send(response, 204, {}, {
       'access-control-allow-methods': 'GET, POST, PATCH, OPTIONS',
@@ -191,10 +192,12 @@ createServer(async (request, response) => {
     if (request.method === 'POST' && match?.[1] && (match[2] === 'payment' || match[2] === 'verify')) {
       const { txHash: suppliedTxHash } = await readJson(request); const stored = await repository.findById(match[1]); const txHash = suppliedTxHash ?? stored?.txHash
       if (!txHash) return send(response, 400, { error: 'Transaction hash is required.' })
-      const status = await verifyPurchasePayment({ repository, adapter, purchaseId: match[1], txHash, network })
+      const status = await verifyPurchasePayment({ repository, adapter, purchaseId: match[1], txHash, network: configuredNetwork })
       return send(response, 200, { status: status === 'FINALIZED' ? 'ACTIVE' : status === 'DETECTED' ? 'PAYMENT_DETECTED' : status === 'RETRYABLE_NOT_FOUND' ? 'PAYMENT_SUBMITTED' : 'PAYMENT_MISMATCH' })
     }
     if (request.method === 'GET' && !url.pathname.startsWith('/api/') && await sendAppFile(response, url.pathname)) return
     return send(response, 404, { error: 'Not found.' })
   } catch { return send(response, 500, { error: 'We could not check this purchase right now.' }) }
-}).listen(Number(process.env.PORT ?? 8787))
+}
+
+if (!process.env.VERCEL) createServer(handleRequest).listen(Number(process.env.PORT ?? 8787))
