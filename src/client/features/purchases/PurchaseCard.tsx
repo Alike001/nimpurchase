@@ -22,6 +22,8 @@ export function PurchaseCard({ purchase }: { purchase: PurchaseView }) {
         setNotice(userFacingSigningError(reason))
       } else if (reason instanceof Error && /wallet confirmation was invalid|already been used|expired/i.test(reason.message)) {
         setNotice('Please confirm with the Nimiq account that made this purchase, then try again.')
+      } else if (reason instanceof Error && /please confirm with the nimiq account|nimiq pay could not verify this support confirmation/i.test(reason.message)) {
+        setNotice(reason.message)
       } else {
         setNotice('We could not send your request. Please try again.')
       }

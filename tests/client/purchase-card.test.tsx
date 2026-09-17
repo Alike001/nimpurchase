@@ -72,4 +72,17 @@ describe('Purchase Passport support', () => {
     expect((await screen.findByRole('status')).textContent).toContain('Support confirmation cancelled')
     expect(mocks.sendSupport).not.toHaveBeenCalled()
   })
+
+  it('explains when the signed wallet differs from the payment wallet', async () => {
+    const sign = vi.fn().mockResolvedValue({ publicKey: 'different-public-key', signature: 'signature' })
+    mocks.provider.mockResolvedValue({ sign })
+    mocks.supportChallenge.mockResolvedValue({ challengeId: 'support-challenge-1', message: 'Confirm support request', expiresAt: '2026-09-17T10:05:00.000Z' })
+    mocks.sendSupport.mockRejectedValue(new Error('Please confirm with the Nimiq account that made this purchase.'))
+    render(<PurchaseCard purchase={purchase} />)
+
+    fireEvent.change(screen.getByLabelText('Your message'), { target: { value: 'Please help with this purchase.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Get support' }))
+
+    expect((await screen.findByRole('status')).textContent).toContain('Please confirm with the Nimiq account')
+  })
 })
