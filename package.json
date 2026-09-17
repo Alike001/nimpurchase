@@ -11,6 +11,7 @@
     "dev": "vite",
     "start": "tsx src/server/index.ts",
     "build": "tsc --noEmit && vite build",
+    "vercel-build": "npm run build && npm run db:migrate",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
