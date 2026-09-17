@@ -87,7 +87,7 @@ The API health check is available at `GET /api/health`. It reports only dependen
 
 The repository includes `vercel.json` and an API adapter so Vercel can serve the Vite application, API routes, and direct deep links from one HTTPS origin. Configure the four runtime variables above in the deployment provider; keep `DATABASE_URL` and any authenticated RPC endpoint secret. The Vercel build command applies the idempotent PostgreSQL migrations before serving the application.
 
-See [the submission checklist](docs/SUBMISSION_CHECKLIST.md) and [the demo script](docs/DEMO_SCRIPT.md).
+See [the submission copy](docs/SUBMISSION_COPY.md), [the submission checklist](docs/SUBMISSION_CHECKLIST.md), and [the demo script](docs/DEMO_SCRIPT.md).
 
 ## License
 
