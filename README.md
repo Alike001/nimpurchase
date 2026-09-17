@@ -29,7 +29,7 @@ Open the public URL in a regular browser to see the product landing page. Inside
 
 For a real test, use **Testnet** in Nimiq Pay and configure the same network in the server environment. Create a merchant through `/merchant`, create a small checkout, then open the generated checkout link in Nimiq Pay using the buyer account. The buyer confirms a direct NIM transfer; after the payment is included and finalized, the Passport becomes active and remains available from the customer home.
 
-Support is available only from an active Passport. The customer enters a message, taps **Get support**, and confirms a wallet signature. This signature proves that the sender controls the purchase wallet; it is not a payment and does not expose a private key.
+Support is available only from an active Passport. The customer enters a message from that verified purchase card, and the merchant receives it as an `OPEN` support workflow record. The request remains tied to the on-chain buyer wallet stored at payment verification; it is not a payment and cannot reverse a NIM transfer. Support submissions are rate-limited per Passport.
 
 ### Loyalty
 

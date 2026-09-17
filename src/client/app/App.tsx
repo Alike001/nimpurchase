@@ -31,7 +31,7 @@ function PrivacyPage() {
     <p className="page-intro">NimPurchase never holds NIM, private keys, seed phrases, or wallet passwords.</p>
     <section className="privacy-section"><h2>What NimPurchase stores</h2><p>To create a Purchase Passport, the app stores the merchant receiving address, purchase details, NIM amount, compact purchase reference, transaction hash, on-chain buyer address, reward progress, and any support messages.</p></section>
     <section className="privacy-section"><h2>Why it is stored</h2><p>This information lets the app independently verify a direct NIM payment, reopen a purchase card, calculate merchant-specific rewards, and connect support to the correct purchase.</p></section>
-    <section className="privacy-section"><h2>What never happens</h2><p>Your payment is sent directly to the merchant. NimPurchase cannot reverse a transfer, access your wallet, or move funds on your behalf. Wallet signatures only prove control of an address for merchant access or a support request.</p></section>
+    <section className="privacy-section"><h2>What never happens</h2><p>Your payment is sent directly to the merchant. NimPurchase cannot reverse a transfer, access your wallet, or move funds on your behalf. Wallet signatures only prove control of a receiving address for merchant access.</p></section>
     <section className="privacy-section"><h2>Your choices</h2><p>Only create support messages you want the merchant to receive. For a question about a purchase record or support request, contact the relevant merchant through the Purchase Passport.</p></section>
   </main>
 }

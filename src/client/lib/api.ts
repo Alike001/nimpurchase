@@ -19,6 +19,5 @@ export const purchaseApi = {
   submit: (purchaseId: string, txHash: string) => request<{ status: string }>(`/api/purchases/${purchaseId}/payment`, { method: 'POST', body: JSON.stringify({ txHash }) }),
   verify: (purchaseId: string, txHash?: string) => request<{ status: string }>(`/api/purchases/${purchaseId}/verify`, { method: 'POST', body: JSON.stringify({ txHash }) }),
   history: (wallet: string) => request<PurchaseView[]>(`/api/purchases?buyerWallet=${encodeURIComponent(wallet)}`),
-  supportChallenge: (purchaseId: string) => request<{ challengeId: string; message: string; expiresAt: string }>(`/api/purchases/${purchaseId}/support/challenge`, { method: 'POST' }),
-  sendSupport: (purchaseId: string, proof: { challengeId: string; publicKey: string; signature: string; message: string }) => request<{ id: string; status: string }>(`/api/purchases/${purchaseId}/support`, { method: 'POST', body: JSON.stringify(proof) }),
+  sendSupport: (purchaseId: string, message: string) => request<{ id: string; status: string }>(`/api/purchases/${purchaseId}/support`, { method: 'POST', body: JSON.stringify({ message }) }),
 }

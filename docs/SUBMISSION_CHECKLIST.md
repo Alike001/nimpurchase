@@ -18,7 +18,7 @@
 - [ ] The receiving account is the merchant account selected during onboarding.
 - [ ] The Purchase Passport reopens after refresh and appears in customer history.
 - [ ] A second verified purchase updates loyalty progress.
-- [ ] A support message requires buyer wallet confirmation and appears in the merchant workspace.
+- [ ] A support message can be sent from an active Purchase Passport and appears in the merchant workspace.
 - [ ] Wallet cancellation, expired checkout, temporary RPC delay, and refresh during verification remain understandable and recoverable.
 
 ## Submission materials

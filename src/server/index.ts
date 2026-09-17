@@ -8,7 +8,7 @@ import { Pool } from 'pg'
 import { NimiqJsonRpcAdapter } from './nimiq/rpc-client.js'
 import { PostgresPurchaseRepository } from './purchases/postgres-purchase-repository.js'
 import { verifyPurchasePayment } from './purchases/verification-service.js'
-import { canonicalizeNimiqAddress, inspectNimiqSignedMessage, isMerchantAuthChallengeUsable, verifyNimiqSignedMessage } from './auth/nimiq-signature.js'
+import { canonicalizeNimiqAddress, isMerchantAuthChallengeUsable, verifyNimiqSignedMessage } from './auth/nimiq-signature.js'
 import { createSessionToken, expiredSessionCookie, hashSessionToken, merchantSessionCookie, merchantSessionLifetimeSeconds, readCookie, sessionCookie } from './auth/session.js'
 
 const databaseUrl = process.env.DATABASE_URL
@@ -129,32 +129,15 @@ export async function handleRequest(request: import('node:http').IncomingMessage
     }
     const merchantMatch = url.pathname.match(/^\/api\/merchants\/([^/]+)\/purchases$/)
     const supportMatch = url.pathname.match(/^\/api\/purchases\/([^/]+)\/support$/)
-    const supportChallengeMatch = url.pathname.match(/^\/api\/purchases\/([^/]+)\/support\/challenge$/)
-    if (request.method === 'POST' && supportChallengeMatch) {
-      const purchase = await repository.findById(supportChallengeMatch[1])
-      if (!purchase || purchase.status !== 'ACTIVE' || !purchase.buyerWallet) return send(response, 400, { error: 'Support is available only for an active purchase.' })
-      const id = randomUUID(); const expiresAt = new Date(Date.now() + 5 * 60_000); const nonce = randomBytes(24).toString('base64url')
-      const message = `Request support for a verified NimPurchase\n\nPurchase card: ${purchase.id}\nWebsite: ${publicAppOrigin}\nRequest: ${nonce}\nExpires: ${expiresAt.toISOString()}`
-      await pool.query('INSERT INTO support_auth_challenges (id, purchase_id, wallet_address, message, expires_at) VALUES ($1,$2,$3,$4,$5)', [id, purchase.id, purchase.buyerWallet, message, expiresAt])
-      return send(response, 201, { challengeId: id, message, expiresAt: expiresAt.toISOString() })
-    }
     if (request.method === 'POST' && supportMatch) {
-      const body = await readJson(request) as { challengeId?: string; publicKey?: string; signature?: string; message?: string }
+      const body = await readJson(request) as { message?: string }
       const purchase = await repository.findById(supportMatch[1])
-      if (!purchase || purchase.status !== 'ACTIVE' || !purchase.buyerWallet || !body.challengeId || !body.publicKey || !body.signature || !body.message?.trim() || body.message.trim().length > 1000) return send(response, 400, { error: 'Support is available only for your active purchase.' })
-      const challenge = await pool.query<{ id: string; wallet_address: string; message: string; expires_at: Date; used_at: Date | null }>('SELECT id, wallet_address, message, expires_at, used_at FROM support_auth_challenges WHERE id = $1 AND purchase_id = $2', [body.challengeId, purchase.id])
-      const proof = challenge.rows[0]
-      if (!proof || !isMerchantAuthChallengeUsable({ expiresAt: proof.expires_at, usedAt: proof.used_at })) return send(response, 401, { error: 'This wallet confirmation is expired. Please try again.' })
-      const verification = inspectNimiqSignedMessage({ message: proof.message, publicKeyHex: body.publicKey, signatureHex: body.signature, expectedAddress: purchase.buyerWallet })
-      if (verification !== 'VALID') {
-        console.warn('Support wallet proof rejected', { purchaseId: purchase.id, outcome: verification })
-        return send(response, 401, { error: verification === 'ADDRESS_MISMATCH' ? 'Please confirm with the Nimiq account that made this purchase.' : 'Nimiq Pay could not verify this support confirmation. Please refresh and try again.' })
-      }
+      if (!purchase || purchase.status !== 'ACTIVE' || !purchase.buyerWallet || !body.message?.trim() || body.message.trim().length > 1000) return send(response, 400, { error: 'Support is available only from an active Purchase Passport.' })
       const client = await pool.connect()
       try {
         await client.query('BEGIN')
-        const consumed = await client.query('UPDATE support_auth_challenges SET used_at = now() WHERE id = $1 AND purchase_id = $2 AND used_at IS NULL AND expires_at > now() RETURNING id', [proof.id, purchase.id])
-        if (!consumed.rowCount) { await client.query('ROLLBACK'); return send(response, 401, { error: 'This wallet confirmation has already been used.' }) }
+        const recent = await client.query<{ count: string }>("SELECT count(*) FROM support_requests WHERE purchase_id = $1 AND created_at > now() - interval '10 minutes'", [purchase.id])
+        if (Number(recent.rows[0].count) >= 3) { await client.query('ROLLBACK'); return send(response, 429, { error: 'Too many support requests. Please wait a few minutes.' }) }
         const id = randomUUID(); await client.query('INSERT INTO support_requests (id, purchase_id, buyer_wallet, status, message) VALUES ($1,$2,$3,$4,$5)', [id, purchase.id, purchase.buyerWallet, 'OPEN', body.message.trim()])
         await client.query('COMMIT')
         return send(response, 201, { id, status: 'OPEN' })

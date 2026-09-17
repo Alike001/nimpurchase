@@ -2,20 +2,11 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-  provider: vi.fn(),
-  supportChallenge: vi.fn(),
   sendSupport: vi.fn(),
-}))
-
-vi.mock('../../src/client/lib/nimiq-provider', () => ({
-  getNimiqProvider: mocks.provider,
-  isProviderError: (value: unknown) => typeof value === 'object' && value !== null && 'error' in value,
-  userFacingSigningError: () => 'Support confirmation cancelled. Nothing was sent.',
 }))
 
 vi.mock('../../src/client/lib/api', () => ({
   purchaseApi: {
-    supportChallenge: mocks.supportChallenge,
     sendSupport: mocks.sendSupport,
   },
 }))
@@ -41,48 +32,34 @@ afterEach(() => {
 })
 
 describe('Purchase Passport support', () => {
-  it('signs the server-issued support challenge before sending the message', async () => {
-    const sign = vi.fn().mockResolvedValue({ publicKey: 'buyer-public-key', signature: 'buyer-signature' })
-    mocks.provider.mockResolvedValue({ sign })
-    mocks.supportChallenge.mockResolvedValue({ challengeId: 'support-challenge-1', message: 'Confirm support request', expiresAt: '2026-09-17T10:05:00.000Z' })
+  it('sends a support message from an active Purchase Passport', async () => {
     mocks.sendSupport.mockResolvedValue({ id: 'support-1', status: 'OPEN' })
     render(<PurchaseCard purchase={purchase} />)
 
     fireEvent.change(screen.getByLabelText('Your message'), { target: { value: 'Please help with this purchase.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Get support' }))
 
-    await waitFor(() => expect(sign).toHaveBeenCalledWith('Confirm support request'))
-    await waitFor(() => expect(mocks.sendSupport).toHaveBeenCalledWith('purchase-1', {
-      challengeId: 'support-challenge-1',
-      publicKey: 'buyer-public-key',
-      signature: 'buyer-signature',
-      message: 'Please help with this purchase.',
-    }))
+    await waitFor(() => expect(mocks.sendSupport).toHaveBeenCalledWith('purchase-1', 'Please help with this purchase.'))
     expect((await screen.findByRole('status')).textContent).toContain('Support request sent to the merchant.')
   })
 
-  it('does not send support when the wallet confirmation is cancelled', async () => {
-    mocks.provider.mockResolvedValue({ sign: vi.fn().mockResolvedValue({ error: { message: 'User rejected request' } }) })
-    mocks.supportChallenge.mockResolvedValue({ challengeId: 'support-challenge-1', message: 'Confirm support request', expiresAt: '2026-09-17T10:05:00.000Z' })
+  it('keeps a temporary support failure recoverable', async () => {
+    mocks.sendSupport.mockRejectedValue(new Error('Temporary server problem'))
     render(<PurchaseCard purchase={purchase} />)
 
     fireEvent.change(screen.getByLabelText('Your message'), { target: { value: 'Please help with this purchase.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Get support' }))
 
-    expect((await screen.findByRole('status')).textContent).toContain('Support confirmation cancelled')
-    expect(mocks.sendSupport).not.toHaveBeenCalled()
+    expect((await screen.findByRole('status')).textContent).toContain('We could not send your request. Please try again.')
   })
 
-  it('explains when the signed wallet differs from the payment wallet', async () => {
-    const sign = vi.fn().mockResolvedValue({ publicKey: 'different-public-key', signature: 'signature' })
-    mocks.provider.mockResolvedValue({ sign })
-    mocks.supportChallenge.mockResolvedValue({ challengeId: 'support-challenge-1', message: 'Confirm support request', expiresAt: '2026-09-17T10:05:00.000Z' })
-    mocks.sendSupport.mockRejectedValue(new Error('Please confirm with the Nimiq account that made this purchase.'))
+  it('explains when a Passport reaches the support submission rate limit', async () => {
+    mocks.sendSupport.mockRejectedValue(new Error('Too many support requests. Please wait a few minutes.'))
     render(<PurchaseCard purchase={purchase} />)
 
     fireEvent.change(screen.getByLabelText('Your message'), { target: { value: 'Please help with this purchase.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Get support' }))
 
-    expect((await screen.findByRole('status')).textContent).toContain('Please confirm with the Nimiq account')
+    expect((await screen.findByRole('status')).textContent).toContain('Please wait a few minutes')
   })
 })
