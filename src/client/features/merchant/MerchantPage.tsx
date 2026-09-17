@@ -42,6 +42,10 @@ async function jsonResponse<T>(response: Response): Promise<T> {
   return body
 }
 
+function merchantApi(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(path, { credentials: 'include', ...init })
+}
+
 export function MerchantPage() {
   const [merchantId, setMerchantId] = useState(() => window.localStorage.getItem(merchantStorageKey) ?? '')
   const [merchantName, setMerchantName] = useState('')
@@ -70,9 +74,9 @@ export function MerchantPage() {
   async function loadWorkspace(): Promise<void> {
     if (!merchantId) return
     const [sessionResponse, salesResponse, supportResponse] = await Promise.all([
-      fetch('/api/merchant-auth/session'),
-      fetch(`/api/merchants/${merchantId}/purchases`),
-      fetch(`/api/merchants/${merchantId}/support`),
+      merchantApi('/api/merchant-auth/session'),
+      merchantApi(`/api/merchants/${merchantId}/purchases`),
+      merchantApi(`/api/merchants/${merchantId}/support`),
     ])
     if (sessionResponse.status === 401 || salesResponse.status === 401 || supportResponse.status === 401) {
       clearMerchant('Confirm your receiving account to reopen this workspace.')
@@ -119,13 +123,13 @@ export function MerchantPage() {
 
     setAuthenticating(true)
     try {
-      const challenge = await jsonResponse<AuthChallenge>(await fetch('/api/merchant-auth/challenge', {
+      const challenge = await jsonResponse<AuthChallenge>(await merchantApi('/api/merchant-auth/challenge', {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ displayName, walletAddress }),
       }))
       const signed = await (await getNimiqProvider()).sign(challenge.message)
       if (isProviderError(signed)) throw signed
-      const merchant = await jsonResponse<MerchantSession>(await fetch('/api/merchant-auth/verify', {
+      const merchant = await jsonResponse<MerchantSession>(await merchantApi('/api/merchant-auth/verify', {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ challengeId: challenge.challengeId, publicKey: signed.publicKey, signature: signed.signature }),
       }))
@@ -150,7 +154,7 @@ export function MerchantPage() {
     if (!Number.isFinite(nim) || !Number.isSafeInteger(nim * LUNA_PER_NIM)) {
       throw new Error('Enter a price with at most five decimal places.')
     }
-    const body = await jsonResponse<{ checkoutPath: string; checkoutUrl?: string }>(await fetch(`/api/merchants/${merchantId}/purchases`, {
+    const body = await jsonResponse<{ checkoutPath: string; checkoutUrl?: string }>(await merchantApi(`/api/merchants/${merchantId}/purchases`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         itemName: data.get('item'), description: data.get('description'),
@@ -163,14 +167,14 @@ export function MerchantPage() {
   }
 
   async function updateSupport(requestId: string, status: SupportRequest['status']): Promise<void> {
-    await jsonResponse(await fetch(`/api/merchants/${merchantId}/support/${requestId}`, {
+    await jsonResponse(await merchantApi(`/api/merchants/${merchantId}/support/${requestId}`, {
       method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status }),
     }))
     await loadWorkspace()
   }
 
   async function switchMerchant(): Promise<void> {
-    await fetch('/api/merchant-auth/logout', { method: 'POST' }).catch(() => undefined)
+    await merchantApi('/api/merchant-auth/logout', { method: 'POST' }).catch(() => undefined)
     clearMerchant()
   }
 

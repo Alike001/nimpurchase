@@ -45,7 +45,10 @@ async function viewPurchase(id: string) {
 
 createServer(async (request, response) => {
   try {
-    if (request.method === 'OPTIONS') return send(response, 204, {})
+    if (request.method === 'OPTIONS') return send(response, 204, {}, {
+      'access-control-allow-methods': 'GET, POST, PATCH, OPTIONS',
+      'access-control-allow-headers': 'content-type',
+    })
     const url = new URL(request.url ?? '/', 'http://localhost')
     const match = url.pathname.match(/^\/api\/purchases\/([^/]+)(?:\/(payment|verify))?$/)
     if (request.method === 'GET' && url.pathname === '/api/health') {

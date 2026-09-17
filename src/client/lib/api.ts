@@ -8,7 +8,7 @@ export type PurchaseView = {
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? ''
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${apiBase}${path}`, { ...init, headers: { 'content-type': 'application/json', ...init?.headers } })
+  const response = await fetch(`${apiBase}${path}`, { credentials: 'include', ...init, headers: { 'content-type': 'application/json', ...init?.headers } })
   const body = await response.json() as T | { error: string }
   if (!response.ok) throw new Error(typeof body === 'object' && body !== null && 'error' in body ? body.error : 'Request failed.')
   return body as T

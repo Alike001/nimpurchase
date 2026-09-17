@@ -54,6 +54,8 @@ describe('merchant onboarding', () => {
 
     await waitFor(() => expect(sign).toHaveBeenCalledWith('Confirm this account'))
     await waitFor(() => expect(window.localStorage.getItem('nimpurchase:merchant-id')).toBe('merchant-1'))
+    const challengeCall = fetchMock.mock.calls.find(([url]) => String(url) === '/api/merchant-auth/challenge')
+    expect(challengeCall?.[1]).toMatchObject({ credentials: 'include' })
     const verificationCall = fetchMock.mock.calls.find(([url]) => String(url) === '/api/merchant-auth/verify')
     expect(JSON.parse(String(verificationCall?.[1]?.body))).toEqual({
       challengeId: 'challenge-1',
