@@ -8,7 +8,7 @@ import { Pool } from 'pg'
 import { NimiqJsonRpcAdapter } from './nimiq/rpc-client.js'
 import { PostgresPurchaseRepository } from './purchases/postgres-purchase-repository.js'
 import { verifyPurchasePayment } from './purchases/verification-service.js'
-import { canonicalizeNimiqAddress, isMerchantAuthChallengeUsable, verifyNimiqSignedMessage } from './auth/nimiq-signature.js'
+import { canonicalizeNimiqAddress, inspectNimiqSignedMessage, isMerchantAuthChallengeUsable, verifyNimiqSignedMessage } from './auth/nimiq-signature.js'
 import { createSessionToken, expiredSessionCookie, hashSessionToken, merchantSessionCookie, merchantSessionLifetimeSeconds, readCookie, sessionCookie } from './auth/session.js'
 
 const databaseUrl = process.env.DATABASE_URL
@@ -144,7 +144,12 @@ export async function handleRequest(request: import('node:http').IncomingMessage
       if (!purchase || purchase.status !== 'ACTIVE' || !purchase.buyerWallet || !body.challengeId || !body.publicKey || !body.signature || !body.message?.trim() || body.message.trim().length > 1000) return send(response, 400, { error: 'Support is available only for your active purchase.' })
       const challenge = await pool.query<{ id: string; wallet_address: string; message: string; expires_at: Date; used_at: Date | null }>('SELECT id, wallet_address, message, expires_at, used_at FROM support_auth_challenges WHERE id = $1 AND purchase_id = $2', [body.challengeId, purchase.id])
       const proof = challenge.rows[0]
-      if (!proof || !isMerchantAuthChallengeUsable({ expiresAt: proof.expires_at, usedAt: proof.used_at }) || !verifyNimiqSignedMessage({ message: proof.message, publicKeyHex: body.publicKey, signatureHex: body.signature, expectedAddress: purchase.buyerWallet })) return send(response, 401, { error: 'Wallet confirmation was invalid or expired. Please try again.' })
+      if (!proof || !isMerchantAuthChallengeUsable({ expiresAt: proof.expires_at, usedAt: proof.used_at })) return send(response, 401, { error: 'This wallet confirmation is expired. Please try again.' })
+      const verification = inspectNimiqSignedMessage({ message: proof.message, publicKeyHex: body.publicKey, signatureHex: body.signature, expectedAddress: purchase.buyerWallet })
+      if (verification !== 'VALID') {
+        console.warn('Support wallet proof rejected', { purchaseId: purchase.id, outcome: verification })
+        return send(response, 401, { error: verification === 'ADDRESS_MISMATCH' ? 'Please confirm with the Nimiq account that made this purchase.' : 'Nimiq Pay could not verify this support confirmation. Please refresh and try again.' })
+      }
       const client = await pool.connect()
       try {
         await client.query('BEGIN')

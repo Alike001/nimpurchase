@@ -1,6 +1,6 @@
 import { BufferUtils, Hash, KeyPair } from '@nimiq/core'
 import { describe, expect, it } from 'vitest'
-import { isMerchantAuthChallengeUsable, normalizeNimiqAddress, verifyNimiqSignedMessage } from '../../src/server/auth/nimiq-signature'
+import { inspectNimiqSignedMessage, isMerchantAuthChallengeUsable, normalizeNimiqAddress, verifyNimiqSignedMessage } from '../../src/server/auth/nimiq-signature'
 import { createSessionToken, hashSessionToken, merchantSessionCookie, readCookie, sessionCookie } from '../../src/server/auth/session'
 
 const compactPrefix = '\x16Nimiq Signed Message:\n'
@@ -39,6 +39,7 @@ describe('merchant wallet authentication', () => {
     const signed = signedFixture(message)
     const otherAddress = KeyPair.generate().toAddress().toUserFriendlyAddress()
     expect(verifyNimiqSignedMessage({ message, ...signed, expectedAddress: otherAddress })).toBe(false)
+    expect(inspectNimiqSignedMessage({ message, ...signed, expectedAddress: otherAddress })).toBe('ADDRESS_MISMATCH')
   })
 
   it('normalizes user-friendly address spacing and case', () => {
