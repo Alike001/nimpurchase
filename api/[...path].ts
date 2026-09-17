@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { handleRequest } from '../src/server/index'
+import { handleRequest } from '../src/server/index.js'
 
 export default {
   async fetch(request: Request): Promise<Response> {
