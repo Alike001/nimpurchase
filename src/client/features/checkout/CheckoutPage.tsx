@@ -3,6 +3,7 @@ import { formatNim } from '../../../shared/money'
 import { purchaseApi, type PurchaseView } from '../../lib/api'
 import { getNimiqProvider, isProviderError, userFacingWalletError } from '../../lib/nimiq-provider'
 import { paymentStatusCopy } from '../purchases/status-copy'
+import { rememberPassport } from '../purchases/passport-storage'
 
 export function CheckoutPage({ purchaseId }: { purchaseId: string }) {
   const [purchase, setPurchase] = useState<PurchaseView>()
@@ -20,6 +21,9 @@ export function CheckoutPage({ purchaseId }: { purchaseId: string }) {
     const timer = window.setInterval(poll, 3_000)
     return () => window.clearInterval(timer)
   }, [purchase, purchaseId, txHash])
+  useEffect(() => {
+    if (purchase?.status === 'ACTIVE') rememberPassport(purchase.id)
+  }, [purchase])
 
   async function pay(): Promise<void> {
     if (!purchase) return
