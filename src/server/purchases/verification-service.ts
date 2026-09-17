@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { verifyNimiqPayment } from '../nimiq/verify-payment'
+import { verifyNimiqPayment } from '../nimiq/verify-payment.js'
 import type { NimiqChainAdapter, NimiqNetwork } from '../nimiq/types'
 import type { PurchaseRepository } from './repository'
 

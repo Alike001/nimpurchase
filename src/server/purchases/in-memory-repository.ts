@@ -1,4 +1,4 @@
-import { assertPurchaseTransition } from '../../shared/purchase-state'
+import { assertPurchaseTransition } from '../../shared/purchase-state.js'
 import type { Purchase, VerificationAttempt } from './types'
 import type { PurchaseRepository, VerificationAssignment } from './repository'
 

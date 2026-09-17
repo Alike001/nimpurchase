@@ -1,4 +1,4 @@
-import { normalizeTransaction } from './normalize-transaction'
+import { normalizeTransaction } from './normalize-transaction.js'
 import type { NimiqChainAdapter, NormalizedNimiqTransaction } from './types'
 
 type JsonRpcEnvelope = { result?: unknown; error?: { message?: string } }

@@ -1,5 +1,5 @@
-import { assertLuna } from '../../shared/money'
-import { assertPurchaseTransition } from '../../shared/purchase-state'
+import { assertLuna } from '../../shared/money.js'
+import { assertPurchaseTransition } from '../../shared/purchase-state.js'
 import type { Purchase, CreatePurchaseInput } from './types'
 import type { PurchaseRepository } from './repository'
 

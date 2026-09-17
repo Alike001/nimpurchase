@@ -1,4 +1,4 @@
-import { decodeChainReference } from '../../shared/chain-reference'
+import { decodeChainReference } from '../../shared/chain-reference.js'
 import type { NimiqChainAdapter, PaymentExpectation, PaymentValidation } from './types'
 
 export async function verifyNimiqPayment(adapter: NimiqChainAdapter, expected: PaymentExpectation): Promise<PaymentValidation> {

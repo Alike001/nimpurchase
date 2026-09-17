@@ -5,11 +5,11 @@ import { existsSync } from 'node:fs'
 import { extname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Pool } from 'pg'
-import { NimiqJsonRpcAdapter } from './nimiq/rpc-client'
-import { PostgresPurchaseRepository } from './purchases/postgres-purchase-repository'
-import { verifyPurchasePayment } from './purchases/verification-service'
-import { canonicalizeNimiqAddress, isMerchantAuthChallengeUsable, verifyNimiqSignedMessage } from './auth/nimiq-signature'
-import { createSessionToken, expiredSessionCookie, hashSessionToken, merchantSessionCookie, merchantSessionLifetimeSeconds, readCookie, sessionCookie } from './auth/session'
+import { NimiqJsonRpcAdapter } from './nimiq/rpc-client.js'
+import { PostgresPurchaseRepository } from './purchases/postgres-purchase-repository.js'
+import { verifyPurchasePayment } from './purchases/verification-service.js'
+import { canonicalizeNimiqAddress, isMerchantAuthChallengeUsable, verifyNimiqSignedMessage } from './auth/nimiq-signature.js'
+import { createSessionToken, expiredSessionCookie, hashSessionToken, merchantSessionCookie, merchantSessionLifetimeSeconds, readCookie, sessionCookie } from './auth/session.js'
 
 const databaseUrl = process.env.DATABASE_URL
 const rpcUrl = process.env.NIMIQ_RPC_URL
