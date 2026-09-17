@@ -18,9 +18,13 @@ export function PurchaseCard({ purchase }: { purchase: PurchaseView }) {
       setNotice('Support request sent to the merchant.')
       setMessage('')
     } catch (reason) {
-      setNotice(isProviderError(reason) || (reason instanceof Error && /denied|reject|cancel/i.test(reason.message))
-        ? userFacingSigningError(reason)
-        : 'We could not send your request. Please try again.')
+      if (isProviderError(reason) || (reason instanceof Error && /denied|reject|cancel/i.test(reason.message))) {
+        setNotice(userFacingSigningError(reason))
+      } else if (reason instanceof Error && /wallet confirmation was invalid|already been used|expired/i.test(reason.message)) {
+        setNotice('Please confirm with the Nimiq account that made this purchase, then try again.')
+      } else {
+        setNotice('We could not send your request. Please try again.')
+      }
     } finally { setSending(false) }
   }
   return <article className="passport purchase-receipt"><div className="passport-notch" aria-hidden="true" /><p className="passport-kicker"><span className="verified-mark">✓</span> Verified with Nimiq</p><p className="passport-merchant">{purchase.merchantName}</p><h1>{purchase.itemSummary}</h1>{purchase.itemDescription && <p className="item-description">{purchase.itemDescription}</p>}<div className="passport-price"><strong>{formatNim(purchase.expectedAmountLuna)}</strong>{purchaseDate && <span>{purchaseDate}</span>}</div>

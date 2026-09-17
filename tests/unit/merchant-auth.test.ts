@@ -3,9 +3,10 @@ import { describe, expect, it } from 'vitest'
 import { isMerchantAuthChallengeUsable, normalizeNimiqAddress, verifyNimiqSignedMessage } from '../../src/server/auth/nimiq-signature'
 import { createSessionToken, hashSessionToken, merchantSessionCookie, readCookie, sessionCookie } from '../../src/server/auth/session'
 
-const prefix = '\x16Nimiq Signed Message:\n'
+const compactPrefix = '\x16Nimiq Signed Message:\n'
+const spacedPrefix = '\x16 Nimiq Signed Message:\n'
 
-function signedFixture(message: string) {
+function signedFixture(message: string, prefix = compactPrefix) {
   const keyPair = KeyPair.generate()
   const messageBytes = BufferUtils.fromUtf8(message)
   const payload = BufferUtils.fromUtf8(`${prefix}${messageBytes.byteLength}${message}`)
@@ -21,6 +22,11 @@ describe('merchant wallet authentication', () => {
   it('verifies a signed Nimiq message and its derived address', () => {
     const message = 'Sign in to NimPurchase\nRequest: test'
     expect(verifyNimiqSignedMessage({ message, ...signedFixture(message) })).toBe(true)
+  })
+
+  it('accepts the spaced Nimiq message prefix documented for current Hub signatures', () => {
+    const message = 'Request support for a verified NimPurchase'
+    expect(verifyNimiqSignedMessage({ message, ...signedFixture(message, spacedPrefix) })).toBe(true)
   })
 
   it('rejects a signature for a different message', () => {

@@ -1,6 +1,12 @@
 import { Address, BufferUtils, Hash, PublicKey, Signature } from '@nimiq/core'
 
-const NIMIQ_SIGNED_MESSAGE_PREFIX = '\x16Nimiq Signed Message:\n'
+// Nimiq's current Hub guide shows the spaced form in its verification example,
+// while older clients use the compact form. Both are domain-separated Nimiq
+// message encodings; accepting both keeps wallet-auth compatible across hosts.
+const NIMIQ_SIGNED_MESSAGE_PREFIXES = [
+  '\x16Nimiq Signed Message:\n',
+  '\x16 Nimiq Signed Message:\n',
+] as const
 
 export type MerchantAuthChallenge = {
   expiresAt: Date
@@ -28,13 +34,15 @@ export function verifyNimiqSignedMessage(input: {
   try {
     const publicKey = PublicKey.fromHex(input.publicKeyHex)
     const signature = Signature.fromHex(input.signatureHex)
-    const messageBytes = BufferUtils.fromUtf8(input.message)
-    const signedPayload = BufferUtils.fromUtf8(`${NIMIQ_SIGNED_MESSAGE_PREFIX}${messageBytes.byteLength}${input.message}`)
-    const hash = Hash.computeSha256(signedPayload)
     const derivedAddress = publicKey.toAddress().toUserFriendlyAddress()
 
-    return normalizeNimiqAddress(derivedAddress) === normalizeNimiqAddress(input.expectedAddress)
-      && publicKey.verify(signature, hash)
+    if (normalizeNimiqAddress(derivedAddress) !== normalizeNimiqAddress(input.expectedAddress)) return false
+
+    const messageBytes = BufferUtils.fromUtf8(input.message)
+    return NIMIQ_SIGNED_MESSAGE_PREFIXES.some((prefix) => {
+      const signedPayload = BufferUtils.fromUtf8(`${prefix}${messageBytes.byteLength}${input.message}`)
+      return publicKey.verify(signature, Hash.computeSha256(signedPayload))
+    })
   } catch {
     return false
   }

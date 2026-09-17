@@ -243,7 +243,7 @@ export function MerchantPage() {
       </form>
       {link && <section className="ready-to-sell">
         <div className="ready-qr"><QRCodeSVG value={link} size={176} level="M" title="Checkout QR code" /></div>
-        <div><p className="eyebrow">Ready to sell</p><h2>Show this QR to your customer</h2><p>The checkout opens directly. Payment goes to your Nimiq account.</p>
+        <div><p className="eyebrow">Ready to sell</p><h2>Share this checkout with your customer</h2><p>Scan with the phone camera or share the link, then open it in Nimiq Pay. The Nimiq Pay payment scanner accepts payment-request codes, not website links.</p>
           <div className="share-actions">
             <button onClick={() => void navigator.clipboard.writeText(link).then(() => setCopied(true))}>{copied ? 'Link copied' : 'Copy link'}</button>
             {navigator.share && <button className="quiet-button" onClick={() => void navigator.share({ title: 'NimPurchase checkout', url: link })}>Share checkout</button>}
