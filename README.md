@@ -34,6 +34,24 @@ npm run build
 
 Use `/merchant` inside Nimiq Pay to create or reopen a merchant workspace. NimPurchase lists the wallet's accounts first, asks the merchant to sign a short-lived sign-in message, and stores only a hashed session token. This proves control of the receiving account without exposing a private key. Manual address entry remains available, but it requires the same wallet confirmation before any sales or support data can be accessed.
 
+## Deployment
+
+Deploy the frontend and API on the same origin, or on subdomains of the same site. This keeps Nimiq Pay wallet-confirmation cookies reliable. Set `PUBLIC_APP_URL` to the exact public HTTPS frontend URL. If the API is on a separate same-site origin, set `VITE_API_BASE_URL` at frontend build time and ensure it is the only allowed CORS origin.
+
+Before release:
+
+```sh
+npm ci
+npm run db:migrate
+npm run test
+npm run lint
+npm run build
+```
+
+The API health check is available at `GET /api/health`. It reports only dependency status, configured network, and current Nimiq block height; it never returns RPC credentials or raw provider errors.
+
+See [the submission checklist](docs/SUBMISSION_CHECKLIST.md) and [the demo script](docs/DEMO_SCRIPT.md).
+
 ## License
 
 [MIT](LICENSE)
