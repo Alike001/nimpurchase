@@ -40,6 +40,8 @@ Deploy the frontend and API on the same origin, or on subdomains of the same sit
 
 For a single-service deployment, run `npm run build` during the build step and `npm run start` as the start command. The Node service serves the built application and all deep links (including checkout and Purchase Passport links) while continuing to own `/api/*`.
 
+A `Dockerfile` is included for hosts that deploy containers. Give the host the required environment variables securely, let it expose port `8787`, and use the image command as provided. It applies idempotent migrations before starting the service; no `.env` file is copied into the image.
+
 Before release:
 
 ```sh

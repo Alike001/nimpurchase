@@ -14,8 +14,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "dev:api": "node --env-file=.env --import tsx --watch src/server/index.ts",
-    "db:migrate": "node --env-file=.env --import tsx src/server/migrate.ts"
+    "dev:api": "node --env-file-if-exists=.env --import tsx --watch src/server/index.ts",
+    "db:migrate": "node --env-file-if-exists=.env --import tsx src/server/migrate.ts"
   },
   "dependencies": {
     "@nimiq/core": "^2.21.0",
