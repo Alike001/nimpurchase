@@ -108,3 +108,15 @@ CREATE TABLE merchant_sessions (
 
 CREATE INDEX merchant_sessions_expiry_idx ON merchant_sessions (expires_at);
 CREATE INDEX merchant_auth_challenges_expiry_idx ON merchant_auth_challenges (expires_at);
+
+CREATE TABLE support_auth_challenges (
+  id uuid PRIMARY KEY,
+  purchase_id uuid NOT NULL REFERENCES purchases(id) ON DELETE CASCADE,
+  wallet_address text NOT NULL,
+  message text NOT NULL,
+  expires_at timestamptz NOT NULL,
+  used_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX support_auth_challenges_expiry_idx ON support_auth_challenges (expires_at);

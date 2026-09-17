@@ -1,6 +1,8 @@
 import { formatNim } from '../../../shared/money'
 import { useState } from 'react'
 import type { PurchaseView } from '../../lib/api'
+import { purchaseApi } from '../../lib/api'
+import { getNimiqProvider, isProviderError, userFacingSigningError } from '../../lib/nimiq-provider'
 
 export function PurchaseCard({ purchase }: { purchase: PurchaseView }) {
   const [message, setMessage] = useState(''); const [notice, setNotice] = useState(''); const [sending, setSending] = useState(false)
@@ -9,10 +11,17 @@ export function PurchaseCard({ purchase }: { purchase: PurchaseView }) {
   async function support() {
     setSending(true); setNotice('')
     try {
-      const response = await fetch(`/api/purchases/${purchase.id}/support`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ buyerWallet: purchase.buyerWallet, message }) })
-      setNotice(response.ok ? 'Support request sent to the merchant.' : 'We could not send your request. Please try again.')
-      if (response.ok) setMessage('')
-    } catch { setNotice('We could not send your request. Please try again.') } finally { setSending(false) }
+      const challenge = await purchaseApi.supportChallenge(purchase.id)
+      const signed = await (await getNimiqProvider()).sign(challenge.message)
+      if (isProviderError(signed)) throw signed
+      await purchaseApi.sendSupport(purchase.id, { challengeId: challenge.challengeId, publicKey: signed.publicKey, signature: signed.signature, message })
+      setNotice('Support request sent to the merchant.')
+      setMessage('')
+    } catch (reason) {
+      setNotice(isProviderError(reason) || (reason instanceof Error && /denied|reject|cancel/i.test(reason.message))
+        ? userFacingSigningError(reason)
+        : 'We could not send your request. Please try again.')
+    } finally { setSending(false) }
   }
   return <article className="passport purchase-receipt"><div className="passport-notch" aria-hidden="true" /><p className="passport-kicker"><span className="verified-mark">✓</span> Verified with Nimiq</p><p className="passport-merchant">{purchase.merchantName}</p><h1>{purchase.itemSummary}</h1>{purchase.itemDescription && <p className="item-description">{purchase.itemDescription}</p>}<div className="passport-price"><strong>{formatNim(purchase.expectedAmountLuna)}</strong>{purchaseDate && <span>{purchaseDate}</span>}</div>
     <section className={`passport-stamps ${unlocked ? 'reward-unlocked' : ''}`} aria-label="Reward progress"><div><span>{unlocked ? 'Reward unlocked' : 'Loyalty stamps'}</span><strong aria-label={`${progress} of ${purchase.reward.threshold} purchases`}>{Array.from({ length: purchase.reward.threshold }, (_, index) => <i className={index < progress ? 'stamp-filled' : ''} key={index}>⬢</i>)}</strong></div><p>{unlocked ? <><b>✓ Reward unlocked</b> · {purchase.reward.description}</> : <>{progress} of {purchase.reward.threshold} purchases · {remaining} more → {purchase.reward.description}</>}</p></section>

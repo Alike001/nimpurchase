@@ -42,6 +42,7 @@ try {
   }
   await applyMigration('002_purchase_item_description', new URL('../../db/migrations/002_add_purchase_item_description.sql', import.meta.url))
   await applyMigration('003_merchant_auth', new URL('../../db/migrations/003_add_merchant_auth.sql', import.meta.url))
+  await applyMigration('004_support_auth', new URL('../../db/migrations/004_add_support_auth.sql', import.meta.url))
   console.log('Database schema is up to date.')
 } finally {
   await pool.end()

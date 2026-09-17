@@ -38,7 +38,7 @@ async function viewPurchase(id: string) {
   const current = purchase.buyerWallet ? await pool.query<{ count: string }>("SELECT count(*) FROM reward_events WHERE merchant_id = $1 AND buyer_wallet = $2 AND reason = 'VERIFIED_PURCHASE'", [purchase.merchantId, purchase.buyerWallet]) : { rows: [{ count: '0' }] }
   return { id: purchase.id, merchantName: merchant.rows[0]?.display_name ?? 'Merchant', merchantWallet: purchase.merchantWalletSnapshot,
     itemSummary: purchase.items.map((item) => item.quantity > 1 ? `${item.quantity} × ${item.name}` : item.name).join(', '), itemDescription: purchase.items[0]?.description, expectedAmountLuna: purchase.expectedAmountLuna,
-    chainReference: purchase.chainReference, status: purchase.status, buyerWallet: purchase.buyerWallet, expiresAt: purchase.expiresAt.toISOString(), purchasedAt: purchase.paymentDetectedAt?.toISOString(),
+    chainReference: purchase.chainReference, status: purchase.status, expiresAt: purchase.expiresAt.toISOString(), purchasedAt: purchase.paymentDetectedAt?.toISOString(),
     warrantyNote: purchase.warrantyNote, returnNote: purchase.returnNote,
     reward: { current: Number(current.rows[0].count), threshold: purchase.rewardRuleSnapshot.threshold, description: purchase.rewardRuleSnapshot.rewardDescription } }
 }
@@ -95,12 +95,31 @@ createServer(async (request, response) => {
     }
     const merchantMatch = url.pathname.match(/^\/api\/merchants\/([^/]+)\/purchases$/)
     const supportMatch = url.pathname.match(/^\/api\/purchases\/([^/]+)\/support$/)
+    const supportChallengeMatch = url.pathname.match(/^\/api\/purchases\/([^/]+)\/support\/challenge$/)
+    if (request.method === 'POST' && supportChallengeMatch) {
+      const purchase = await repository.findById(supportChallengeMatch[1])
+      if (!purchase || purchase.status !== 'ACTIVE' || !purchase.buyerWallet) return send(response, 400, { error: 'Support is available only for an active purchase.' })
+      const id = randomUUID(); const expiresAt = new Date(Date.now() + 5 * 60_000); const nonce = randomBytes(24).toString('base64url')
+      const message = `Request support for a verified NimPurchase\n\nPurchase card: ${purchase.id}\nWebsite: ${publicAppOrigin}\nRequest: ${nonce}\nExpires: ${expiresAt.toISOString()}`
+      await pool.query('INSERT INTO support_auth_challenges (id, purchase_id, wallet_address, message, expires_at) VALUES ($1,$2,$3,$4,$5)', [id, purchase.id, purchase.buyerWallet, message, expiresAt])
+      return send(response, 201, { challengeId: id, message, expiresAt: expiresAt.toISOString() })
+    }
     if (request.method === 'POST' && supportMatch) {
-      const body = await readJson(request) as { buyerWallet?: string; message?: string }
+      const body = await readJson(request) as { challengeId?: string; publicKey?: string; signature?: string; message?: string }
       const purchase = await repository.findById(supportMatch[1])
-      if (!purchase || purchase.status !== 'ACTIVE' || !purchase.buyerWallet || purchase.buyerWallet !== body.buyerWallet || !body.message?.trim()) return send(response, 400, { error: 'Support is available only for your active purchase.' })
-      const id = randomUUID(); await pool.query('INSERT INTO support_requests (id, purchase_id, buyer_wallet, status, message) VALUES ($1,$2,$3,$4,$5)', [id, purchase.id, purchase.buyerWallet, 'OPEN', body.message.trim()])
-      return send(response, 201, { id, status: 'OPEN' })
+      if (!purchase || purchase.status !== 'ACTIVE' || !purchase.buyerWallet || !body.challengeId || !body.publicKey || !body.signature || !body.message?.trim() || body.message.trim().length > 1000) return send(response, 400, { error: 'Support is available only for your active purchase.' })
+      const challenge = await pool.query<{ id: string; wallet_address: string; message: string; expires_at: Date; used_at: Date | null }>('SELECT id, wallet_address, message, expires_at, used_at FROM support_auth_challenges WHERE id = $1 AND purchase_id = $2', [body.challengeId, purchase.id])
+      const proof = challenge.rows[0]
+      if (!proof || !isMerchantAuthChallengeUsable({ expiresAt: proof.expires_at, usedAt: proof.used_at }) || !verifyNimiqSignedMessage({ message: proof.message, publicKeyHex: body.publicKey, signatureHex: body.signature, expectedAddress: purchase.buyerWallet })) return send(response, 401, { error: 'Wallet confirmation was invalid or expired. Please try again.' })
+      const client = await pool.connect()
+      try {
+        await client.query('BEGIN')
+        const consumed = await client.query('UPDATE support_auth_challenges SET used_at = now() WHERE id = $1 AND purchase_id = $2 AND used_at IS NULL AND expires_at > now() RETURNING id', [proof.id, purchase.id])
+        if (!consumed.rowCount) { await client.query('ROLLBACK'); return send(response, 401, { error: 'This wallet confirmation has already been used.' }) }
+        const id = randomUUID(); await client.query('INSERT INTO support_requests (id, purchase_id, buyer_wallet, status, message) VALUES ($1,$2,$3,$4,$5)', [id, purchase.id, purchase.buyerWallet, 'OPEN', body.message.trim()])
+        await client.query('COMMIT')
+        return send(response, 201, { id, status: 'OPEN' })
+      } catch (error) { await client.query('ROLLBACK'); throw error } finally { client.release() }
     }
     const merchantSupportMatch = url.pathname.match(/^\/api\/merchants\/([^/]+)\/support(?:\/([^/]+))?$/)
     if (request.method === 'GET' && merchantSupportMatch) {
